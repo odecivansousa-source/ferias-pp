@@ -7,6 +7,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { SapReportsTab } from './components/SapReportsTab';
 import { RulesHelpTab } from './components/RulesHelpTab';
 import { SupabaseModal } from './components/SupabaseModal';
+import { LoginScreen } from './components/LoginScreen';
 
 import { Perfil, Equipe, SolicitacaoFerias, ConfiguracaoFerias, HistoricoAuditoria } from './types';
 import { 
@@ -20,10 +21,10 @@ import {
   DEFAULT_FALLBACK_USER
 } from './services/dataService';
 import { MOCK_CONFIGURACAO, MOCK_EQUIPES, generateMockPoliciais } from './services/mockData';
-import { RefreshCw, Shield, ExternalLink } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 export function App() {
-  const [activeTab, setActiveTabState] = useState<string>('calendario');
+  const [activeTab, setActiveTabState] = useState<string>('minhas-ferias');
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -33,15 +34,17 @@ export function App() {
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoFerias[]>([]);
   const [historico, setHistorico] = useState<HistoricoAuditoria[]>([]);
 
-  // Inicia com fallback garantido para evitar tela branca ou travamento infinito
-  const [currentUser, setCurrentUser] = useState<Perfil>(() => {
+  // Carrega usuário autenticado salvo pela matrícula
+  const [currentUser, setCurrentUser] = useState<Perfil | null>(() => {
     try {
-      const mock = generateMockPoliciais();
-      const savedId = getActiveUserId();
-      return mock.find(p => p.id === savedId) || mock[0];
-    } catch(e) {
-      return DEFAULT_FALLBACK_USER;
-    }
+      const savedMat = localStorage.getItem('ferias_pp_logged_matricula');
+      if (savedMat) {
+        const mock = generateMockPoliciais();
+        const found = mock.find(p => p.matricula.toUpperCase() === savedMat.toUpperCase());
+        if (found) return found;
+      }
+    } catch(e) {}
+    return null;
   });
 
   const [supabaseModalOpen, setSupabaseModalOpen] = useState<boolean>(false);
@@ -72,10 +75,12 @@ export function App() {
       setSolicitacoes(Array.isArray(sols) ? sols : []);
       setHistorico(Array.isArray(hist) ? hist : []);
 
-      const savedUserId = getActiveUserId();
-      const foundUser = validPerfis.find(p => p.id === savedUserId) || validPerfis[0];
-      if (foundUser) {
-        setCurrentUser(foundUser);
+      const savedMat = localStorage.getItem('ferias_pp_logged_matricula');
+      if (savedMat) {
+        const foundUser = validPerfis.find(p => p.matricula.toUpperCase() === savedMat.toUpperCase());
+        if (foundUser) {
+          setCurrentUser(foundUser);
+        }
       }
     } catch (e: any) {
       console.warn('Erro ao carregar dados:', e);
@@ -83,7 +88,6 @@ export function App() {
       const fallbackPerfis = generateMockPoliciais();
       setPerfis(fallbackPerfis);
       setEquipes(MOCK_EQUIPES);
-      setCurrentUser(fallbackPerfis[0]);
     } finally {
       setLoading(false);
     }
@@ -92,12 +96,12 @@ export function App() {
   useEffect(() => {
     loadData();
 
-    // Failsafe: se demorar mais de 1.5s, libera a tela imediatamente
+    // Failsafe: libera loading após 1.2s
     const failsafeTimer = setTimeout(() => {
       setLoading(false);
-    }, 1500);
+    }, 1200);
 
-    // Sincronizar hash inicial da URL
+    // Sincronizar hash inicial da URL se já logado
     const hash = window.location.hash.replace('#', '');
     if (hash && ['calendario', 'minhas-ferias', 'direcao', 'admin', 'relatorios', 'regras'].includes(hash)) {
       setActiveTabState(hash);
@@ -106,13 +110,33 @@ export function App() {
     return () => clearTimeout(failsafeTimer);
   }, [loadData]);
 
+  const handleLoginSuccess = (user: Perfil) => {
+    setCurrentUser(user);
+    setActiveUserId(user.id);
+    localStorage.setItem('ferias_pp_logged_matricula', user.matricula);
+
+    if (user.papel === 'policial') {
+      setActiveTab('minhas-ferias');
+    } else if (user.papel === 'diretor') {
+      setActiveTab('direcao');
+    } else {
+      setActiveTab('calendario');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('ferias_pp_logged_matricula');
+    setCurrentUser(null);
+  };
+
   const handleSelectUser = (user: Perfil) => {
     setCurrentUser(user);
     setActiveUserId(user.id);
+    localStorage.setItem('ferias_pp_logged_matricula', user.matricula);
   };
 
-  // Se estiver carregando pela primeira vez e não houver usuário
-  if (loading && !currentUser) {
+  // Se estiver carregando inicialmente
+  if (loading && perfis.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center space-y-4">
         <div className="w-16 h-16 rounded-3xl bg-navy-950 flex items-center justify-center shadow-xl border border-navy-800 animate-pulse">
@@ -120,16 +144,20 @@ export function App() {
         </div>
         <div>
           <h2 className="text-xl font-black text-navy-950">FÉRIAS PP</h2>
-          <p className="text-xs text-slate-500 mt-1">Carregando sistema de planejamento de férias da unidade...</p>
+          <p className="text-xs text-slate-500 mt-1">Carregando quadro funcional da unidade...</p>
         </div>
         <RefreshCw className="w-5 h-5 text-gold-600 animate-spin" />
-        <button
-          onClick={() => setLoading(false)}
-          className="mt-4 text-xs font-bold text-navy-800 bg-white border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-xl shadow-sm transition"
-        >
-          Entrar Imediatamente
-        </button>
       </div>
+    );
+  }
+
+  // TELA DE LOGIN OBRIGATÓRIA: se não houver policial autenticado, pede a matrícula
+  if (!currentUser) {
+    return (
+      <LoginScreen
+        perfis={perfis.length > 0 ? perfis : generateMockPoliciais()}
+        onLoginSuccess={handleLoginSuccess}
+      />
     );
   }
 
@@ -145,6 +173,7 @@ export function App() {
         allPerfis={perfis}
         onSelectUser={handleSelectUser}
         onOpenSupabaseModal={() => setSupabaseModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Conteúdo Principal */}

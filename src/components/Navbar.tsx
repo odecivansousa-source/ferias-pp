@@ -10,7 +10,8 @@ import {
   UserCheck, 
   Users,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  LogOut
 } from 'lucide-react';
 import { Perfil, PapelUsuario } from '../types';
 import { isSupabaseConnected } from '../services/supabase';
@@ -22,6 +23,7 @@ interface NavbarProps {
   allPerfis: Perfil[];
   onSelectUser: (user: Perfil) => void;
   onOpenSupabaseModal: () => void;
+  onLogout: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -31,6 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   allPerfis,
   onSelectUser,
   onOpenSupabaseModal,
+  onLogout,
 }) => {
   const isConnected = isSupabaseConnected();
 
@@ -99,8 +102,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Seletor de Perfil / Usuário Atual (Essencial para testes e demonstração) */}
-          <div className="flex items-center gap-3">
+          {/* Seletor de Perfil / Usuário Atual e Botão Sair */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="relative group">
               <div className="flex items-center gap-2.5 bg-slate-100/80 hover:bg-slate-200/80 px-3 py-1.5 rounded-xl border border-slate-200 cursor-pointer transition">
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shadow-sm ${
@@ -118,60 +121,74 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className="font-mono text-[9px]">{currentUser.matricula}</span>
                   </div>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                {currentUser.papel === 'admin' && (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                )}
               </div>
 
-              {/* Dropdown de Troca Rápida de Usuário */}
-              <div className="absolute right-0 mt-1 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 hidden group-hover:block animate-fadeIn z-50">
-                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                  Simulador de Acesso Rápido
+              {/* Dropdown de Troca Rápida de Usuário (Apenas visível para administradores) */}
+              {currentUser.papel === 'admin' && (
+                <div className="absolute right-0 mt-1 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 hidden group-hover:block animate-fadeIn z-50">
+                  <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                    Simulador de Acesso (Modo Admin)
+                  </div>
+
+                  <div className="p-1 space-y-0.5 max-h-80 overflow-y-auto">
+                    <div className="px-2 pt-1 text-[10px] font-bold text-purple-700">Administração Geral</div>
+                    {admins.map(adm => (
+                      <button
+                        key={adm.id}
+                        onClick={() => onSelectUser(adm)}
+                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                          currentUser.id === adm.id ? 'bg-purple-50 font-bold text-purple-900' : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <span className="truncate">{adm.nomeCompleto}</span>
+                        <span className="text-[10px] bg-purple-100 text-purple-800 px-1 rounded">Admin</span>
+                      </button>
+                    ))}
+
+                    <div className="px-2 pt-2 text-[10px] font-bold text-navy-800">Diretoria da Unidade</div>
+                    {diretores.map(dir => (
+                      <button
+                        key={dir.id}
+                        onClick={() => onSelectUser(dir)}
+                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                          currentUser.id === dir.id ? 'bg-navy-50 font-bold text-navy-900' : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <span className="truncate">{dir.nomeCompleto}</span>
+                        <span className="text-[10px] bg-navy-100 text-navy-800 px-1 rounded">Diretor</span>
+                      </button>
+                    ))}
+
+                    <div className="px-2 pt-2 text-[10px] font-bold text-emerald-700">Policiais Penais (Amostra)</div>
+                    {policiais.map(pol => (
+                      <button
+                        key={pol.id}
+                        onClick={() => onSelectUser(pol)}
+                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                          currentUser.id === pol.id ? 'bg-emerald-50 font-bold text-emerald-900' : 'hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <span className="truncate">{pol.nomeCompleto}</span>
+                        <span className="text-[9px] font-mono text-slate-400">{pol.matricula}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-
-                <div className="p-1 space-y-0.5">
-                  <div className="px-2 pt-1 text-[10px] font-bold text-purple-700">Administração Geral</div>
-                  {admins.map(adm => (
-                    <button
-                      key={adm.id}
-                      onClick={() => onSelectUser(adm)}
-                      className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
-                        currentUser.id === adm.id ? 'bg-purple-50 font-bold text-purple-900' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span className="truncate">{adm.nomeCompleto}</span>
-                      <span className="text-[10px] bg-purple-100 text-purple-800 px-1 rounded">Admin</span>
-                    </button>
-                  ))}
-
-                  <div className="px-2 pt-2 text-[10px] font-bold text-navy-800">Diretoria da Unidade</div>
-                  {diretores.map(dir => (
-                    <button
-                      key={dir.id}
-                      onClick={() => onSelectUser(dir)}
-                      className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
-                        currentUser.id === dir.id ? 'bg-navy-50 font-bold text-navy-900' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span className="truncate">{dir.nomeCompleto}</span>
-                      <span className="text-[10px] bg-navy-100 text-navy-800 px-1 rounded">Diretor</span>
-                    </button>
-                  ))}
-
-                  <div className="px-2 pt-2 text-[10px] font-bold text-emerald-700">Policiais Penais (Amostra)</div>
-                  {policiais.map(pol => (
-                    <button
-                      key={pol.id}
-                      onClick={() => onSelectUser(pol)}
-                      className={`w-full text-left px-2 py-1.5 rounded-lg text-xs flex items-center justify-between ${
-                        currentUser.id === pol.id ? 'bg-emerald-50 font-bold text-emerald-900' : 'hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      <span className="truncate">{pol.nomeCompleto}</span>
-                      <span className="text-[9px] font-mono text-slate-400">{pol.matricula}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
+
+            {/* Botão Sair / Trocar Usuário */}
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-rose-700 bg-slate-100 hover:bg-rose-50 px-3 py-2 rounded-xl border border-slate-200 transition"
+              title="Sair do sistema e voltar para a tela de login por matrícula"
+            >
+              <LogOut className="w-3.5 h-3.5 text-slate-500 hover:text-rose-600" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
           </div>
         </div>
 
