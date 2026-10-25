@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle, KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Perfil } from '../types';
+import { getDiretorSenha } from '../services/dataService';
 
 interface LoginScreenProps {
   perfis: Perfil[];
@@ -9,7 +10,24 @@ interface LoginScreenProps {
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess }) => {
   const [matriculaInput, setMatriculaInput] = useState('');
+  const [senhaInput, setSenhaInput] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  // Verifica se a matrícula informada pertence ao Diretor da Unidade
+  const termoMatricula = matriculaInput.trim().toUpperCase();
+  const servidorEncontrado = termoMatricula
+    ? perfis.find(p => {
+        const mat = p.matricula.trim().toUpperCase();
+        if (mat === termoMatricula) return true;
+        if (mat.replace(/[^A-Z0-9]/g, '') === termoMatricula.replace(/[^A-Z0-9]/g, '')) return true;
+        return false;
+      })
+    : null;
+
+  const isDiretor = servidorEncontrado
+    ? servidorEncontrado.papel === 'diretor' || (servidorEncontrado.papel as string) === 'admin'
+    : false;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,25 +39,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
       return;
     }
 
-    // Busca apenas por matrícula de servidor cadastrado no sistema
-    const encontrado = perfis.find(p => {
-      const mat = p.matricula.trim().toUpperCase();
-      if (mat === termo) return true;
-      if (mat.replace(/[^A-Z0-9]/g, '') === termo.replace(/[^A-Z0-9]/g, '')) return true;
-      return false;
-    });
-
-    if (!encontrado) {
+    if (!servidorEncontrado) {
       setErro(`Matrícula "${matriculaInput}" não cadastrada no sistema. O acesso é permitido somente para servidores previamente cadastrados pela Direção da Unidade.`);
       return;
     }
 
-    if (encontrado.situacao === 'inativo') {
+    if (servidorEncontrado.situacao === 'inativo') {
       setErro('Servidor com situação funcional inativa ou afastada. Contate a Direção da unidade.');
       return;
     }
 
-    onLoginSuccess(encontrado);
+    // Se for o DIRETOR DA UNIDADE: validação obrigatória de senha exclusiva
+    if (isDiretor) {
+      if (!senhaInput.trim()) {
+        setErro('O Diretor da Unidade deve informar a senha de acesso.');
+        return;
+      }
+
+      const senhaCorreta = servidorEncontrado.senha || getDiretorSenha();
+      if (senhaInput.trim() !== senhaCorreta) {
+        setErro('Senha de acesso do Diretor incorreta. Por favor, verifique e tente novamente.');
+        return;
+      }
+    }
+
+    // Policial Penal acessa diretamente sem senha
+    onLoginSuccess(servidorEncontrado);
   };
 
   return (
@@ -69,9 +94,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
             </div>
           </div>
 
-          {/* Formulário de Acesso por Matrícula */}
+          {/* Formulário de Acesso */}
           <div className="p-6 sm:p-8">
-            <form onSubmit={handleLogin} className="space-y-5">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-black text-navy-950 uppercase tracking-wider mb-2">
                   Informe sua Matrícula Funcional:
@@ -92,6 +117,45 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                 </div>
               </div>
 
+              {/* Campo exclusivo de senha para o Diretor da Unidade */}
+              {isDiretor && (
+                <div className="space-y-1.5 animate-fadeIn pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-black text-navy-950 uppercase tracking-wider">
+                      Senha de Acesso do Diretor:
+                    </label>
+                    <span className="text-[10px] font-bold text-gold-800 bg-gold-100 px-2.5 py-0.5 rounded-full border border-gold-300 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-gold-600" />
+                      Exclusivo Direção
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={mostrarSenha ? 'text' : 'password'}
+                      required
+                      value={senhaInput}
+                      onChange={(e) => {
+                        setSenhaInput(e.target.value);
+                        setErro(null);
+                      }}
+                      placeholder="Digite sua senha de acesso"
+                      className="w-full text-sm font-mono font-bold px-4 py-3.5 pr-12 bg-slate-50 border-2 border-gold-400 focus:border-navy-950 rounded-2xl outline-none text-navy-950 transition shadow-inner"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMostrarSenha(!mostrarSenha)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-navy-900 transition"
+                      tabIndex={-1}
+                    >
+                      {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Acesso com senha exclusivo da Direção da Unidade.
+                  </p>
+                </div>
+              )}
+
               {erro && (
                 <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2.5 animate-fadeIn">
                   <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
@@ -101,10 +165,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
 
               <button
                 type="submit"
-                className="w-full py-4 px-6 rounded-2xl font-black text-sm text-white bg-navy-950 hover:bg-navy-900 active:scale-[0.99] shadow-lg shadow-navy-950/20 transition flex items-center justify-center gap-2"
+                className="w-full py-4 px-6 rounded-2xl font-black text-sm text-white bg-navy-950 hover:bg-navy-900 active:scale-[0.99] shadow-lg shadow-navy-950/20 transition flex items-center justify-center gap-2 mt-2"
               >
-                <span>Acessar o Sistema</span>
-                <ArrowRight className="w-4 h-4 text-gold-400" />
+                {isDiretor ? (
+                  <>
+                    <KeyRound className="w-4 h-4 text-gold-400" />
+                    <span>Entrar como Diretor</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Acessar o Sistema</span>
+                    <ArrowRight className="w-4 h-4 text-gold-400" />
+                  </>
+                )}
               </button>
             </form>
           </div>

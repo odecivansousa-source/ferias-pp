@@ -33,6 +33,7 @@ export interface Perfil {
   situacao: SituacaoFuncional;
   email?: string;
   telefone?: string;
+  senha?: string; // Senha exclusiva da Direção da Unidade
 }
 
 export interface PeriodoFerias {

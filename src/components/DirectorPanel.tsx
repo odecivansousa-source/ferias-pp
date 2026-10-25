@@ -14,11 +14,14 @@ import {
   X,
   MessageSquare,
   History,
-  ShieldAlert
+  ShieldAlert,
+  KeyRound,
+  Shield
 } from 'lucide-react';
 import { SolicitacaoFerias, Equipe, Perfil, HistoricoAuditoria } from '../types';
 import { formatarDataBR, analisarConflitosSolicitacao } from '../services/conflictEngine';
 import { aprovarSolicitacaoTransacional, decidirSolicitacao } from '../services/dataService';
+import { DirectorModal } from './DirectorModal';
 
 interface DirectorPanelProps {
   currentUser: Perfil;
@@ -50,6 +53,7 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
   const [justificativa, setJustificativa] = useState('');
   const [processando, setProcessando] = useState(false);
   const [mensagemFeedback, setMensagemFeedback] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
+  const [modalDiretorOpen, setModalDiretorOpen] = useState(false);
 
   // Indicadores
   const totalPoliciais = perfis.filter(p => p.papel === 'policial').length;
@@ -136,6 +140,38 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
 
   return (
     <div className="space-y-8 animate-fadeIn">
+      {/* Banner de Identificação e Configuração da Direção */}
+      <div className="bg-gradient-to-r from-navy-950 via-navy-900 to-navy-850 text-white rounded-3xl p-5 sm:p-6 border border-navy-800 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gold-400/20 border border-gold-400/30 flex items-center justify-center text-gold-400 flex-shrink-0">
+            <Shield className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-gold-400 bg-gold-400/10 px-2.5 py-0.5 rounded-full border border-gold-400/20">
+                Direção da Unidade
+              </span>
+              <span className="text-xs text-slate-300 font-mono">
+                Matrícula: <strong className="text-white">{currentUser.matricula}</strong>
+              </span>
+            </div>
+            <h2 className="text-lg font-black text-white">{currentUser.nomeCompleto}</h2>
+            <p className="text-xs text-slate-300">
+              Acesso total com poderes de homologação do plano anual de férias da unidade.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setModalDiretorOpen(true)}
+          className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-gold-400 hover:bg-gold-300 text-navy-950 font-black text-xs shadow-md transition flex items-center justify-center gap-2 whitespace-nowrap"
+        >
+          <KeyRound className="w-4 h-4" />
+          <span>Alterar Nome, Matrícula e Senha</span>
+        </button>
+      </div>
+
       {/* Cards de Métricas e Indicadores da Direção */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm space-y-1">
@@ -466,6 +502,14 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal para Alterar Nome, Matrícula e Senha da Direção */}
+      <DirectorModal
+        isOpen={modalDiretorOpen}
+        onClose={() => setModalDiretorOpen(false)}
+        diretorPerfil={currentUser}
+        onDataUpdated={onDataUpdated}
+      />
     </div>
   );
 };

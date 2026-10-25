@@ -28,18 +28,25 @@ export const DEFAULT_FALLBACK_USER: Perfil = {
   situacao: 'ativo',
   email: 'diretoria@unidade.local',
   telefone: '',
+  senha: '131220',
 };
 
 // Inicializa o armazenamento local com proteção contra JSON vazio ou corrompido
 function initLocalStorageMock() {
   try {
+    // Garante que a senha inicial do diretor esteja configurada
+    if (!localStorage.getItem('ferias_pp_diretor_senha')) {
+      localStorage.setItem('ferias_pp_diretor_senha', '131220');
+    }
+
     // Migration: Limpeza forçada de dados fictícios para permitir cadastro limpo do zero
-    if (localStorage.getItem('ferias_pp_clean_slate_v4') !== 'true') {
+    if (localStorage.getItem('ferias_pp_clean_slate_v5') !== 'true') {
       localStorage.removeItem(STORAGE_KEYS.PERFIS);
       localStorage.removeItem(STORAGE_KEYS.SOLICITACOES);
       localStorage.removeItem(STORAGE_KEYS.HISTORICO);
       localStorage.removeItem('ferias_pp_logged_matricula');
-      localStorage.setItem('ferias_pp_clean_slate_v4', 'true');
+      localStorage.setItem('ferias_pp_diretor_senha', '131220');
+      localStorage.setItem('ferias_pp_clean_slate_v5', 'true');
     }
   } catch (e) {}
 
@@ -244,6 +251,7 @@ export async function getPerfis(): Promise<Perfil[]> {
       return list.map((p: any) => ({
         ...p,
         papel: p.papel === 'admin' ? 'diretor' : p.papel,
+        senha: p.senha || (p.papel === 'diretor' || p.papel === 'admin' ? getDiretorSenha() : undefined),
       }));
     }
   } catch(e) {}
@@ -601,4 +609,51 @@ export function getActiveUserId(): string {
 
 export function setActiveUserId(id: string): void {
   localStorage.setItem(STORAGE_KEYS.ACTIVE_USER, id);
+}
+
+// -----------------------------------------------------------------------------
+// GESTÃO DE ACESSO EXCLUSIVO DO DIRETOR DA UNIDADE
+// -----------------------------------------------------------------------------
+export function getDiretorSenha(): string {
+  try {
+    return localStorage.getItem('ferias_pp_diretor_senha') || '131220';
+  } catch (e) {
+    return '131220';
+  }
+}
+
+export async function salvarDadosDiretor(nomeCompleto: string, matricula: string, novaSenha?: string): Promise<Perfil> {
+  const perfis = await getPerfis();
+  let diretor = perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin');
+  const senhaAtual = getDiretorSenha();
+  const senhaFinal = novaSenha && novaSenha.trim() ? novaSenha.trim() : senhaAtual;
+
+  try {
+    localStorage.setItem('ferias_pp_diretor_senha', senhaFinal);
+  } catch (e) {}
+
+  if (diretor) {
+    diretor.nomeCompleto = nomeCompleto.trim();
+    diretor.matricula = matricula.trim().toUpperCase();
+    diretor.senha = senhaFinal;
+    await savePerfil(diretor);
+  } else {
+    diretor = {
+      id: 'usr-diretor',
+      nomeCompleto: nomeCompleto.trim(),
+      matricula: matricula.trim().toUpperCase(),
+      equipeId: 'eq-1',
+      papel: 'diretor',
+      situacao: 'ativo',
+      email: 'diretoria@unidade.local',
+      senha: senhaFinal,
+    };
+    await savePerfil(diretor);
+  }
+
+  try {
+    localStorage.setItem('ferias_pp_logged_matricula', diretor.matricula);
+  } catch (e) {}
+
+  return diretor;
 }

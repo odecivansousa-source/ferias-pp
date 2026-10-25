@@ -56,6 +56,7 @@ export const INITIAL_DIRECTOR_PROFILE: Perfil = {
   situacao: 'ativo',
   email: 'diretoria@unidade.local',
   telefone: '',
+  senha: '131220', // Senha inicial solicitada pelo usuário
 };
 
 // Retorna apenas a conta do Diretor da Unidade para início limpo dos cadastros

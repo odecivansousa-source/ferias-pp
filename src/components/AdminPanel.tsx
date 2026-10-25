@@ -12,10 +12,12 @@ import {
   RotateCcw,
   Save,
   X,
-  Trash2
+  Trash2,
+  KeyRound
 } from 'lucide-react';
 import { Perfil, Equipe, ConfiguracaoFerias, PapelUsuario, SituacaoFuncional } from '../types';
 import { savePerfil, deletePerfil, updateEquipe, updateConfiguracao, resetDemoData } from '../services/dataService';
+import { DirectorModal } from './DirectorModal';
 
 interface AdminPanelProps {
   perfis: Perfil[];
@@ -37,6 +39,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Modal de Adicionar/Editar Policial
   const [modalPerfil, setModalPerfil] = useState<Partial<Perfil> | null>(null);
+  const [modalDiretorOpen, setModalDiretorOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -73,30 +76,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleOpenEditModal = (p: Perfil) => {
+    if (p.papel === 'diretor' || (p.papel as string) === 'admin') {
+      setModalDiretorOpen(true);
+      return;
+    }
     setModalPerfil({ ...p });
     setIsEditing(true);
     setFeedback(null);
   };
 
   const handleOpenDirectorModal = () => {
-    const diretor = perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin');
-    if (diretor) {
-      setModalPerfil({ ...diretor });
-      setIsEditing(true);
-    } else {
-      setModalPerfil({
-        id: 'usr-diretor',
-        nomeCompleto: '',
-        matricula: '123456',
-        equipeId: equipes[0]?.id || '',
-        papel: 'diretor',
-        situacao: 'ativo',
-        email: '',
-        telefone: '',
-      });
-      setIsEditing(false);
-    }
-    setFeedback(null);
+    setModalDiretorOpen(true);
   };
 
   const handleDeletePerfil = async (p: Perfil) => {
@@ -645,6 +635,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal para Cadastrar / Alterar Nome, Matrícula e Senha do Diretor */}
+      <DirectorModal
+        isOpen={modalDiretorOpen}
+        onClose={() => setModalDiretorOpen(false)}
+        diretorPerfil={perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin')}
+        onDataUpdated={onDataUpdated}
+      />
     </div>
   );
 };
