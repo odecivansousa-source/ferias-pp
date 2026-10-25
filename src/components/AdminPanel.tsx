@@ -102,7 +102,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!confirmar) return;
 
     try {
-      await deletePerfil(p.id);
+      await deletePerfil(p.id, p.matricula);
       onDataUpdated();
     } catch (err: any) {
       alert(`Erro ao excluir: ${err.message}`);

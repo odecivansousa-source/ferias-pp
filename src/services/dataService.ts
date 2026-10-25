@@ -342,19 +342,22 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
   return perfilNormalized;
 }
 
-export async function deletePerfil(id: string): Promise<boolean> {
+export async function deletePerfil(id: string, matricula?: string): Promise<boolean> {
   const perfis = await getPerfis();
-  const target = perfis.find(p => p.id === id);
-  const filtered = perfis.filter(p => p.id !== id);
+  const target = perfis.find(p => p.id === id || (matricula && p.matricula === matricula));
+  const mat = matricula || target?.matricula;
+  const filtered = perfis.filter(p => p.id !== id && (!mat || p.matricula !== mat));
   localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(filtered));
 
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
     try {
-      if (id.length === 36 && id.includes('-')) {
+      if (mat) {
+        const resMat = await supabase.from('perfis').delete().eq('matricula', mat);
+        if (resMat.error) console.warn('Erro ao deletar perfil por matricula no Supabase:', resMat.error);
+      }
+      if (id && id.length === 36 && id.includes('-')) {
         await supabase.from('perfis').delete().eq('id', id);
-      } else if (target) {
-        await supabase.from('perfis').delete().eq('matricula', target.matricula);
       }
     } catch (e) {
       console.warn('Erro ao deletar perfil no Supabase:', e);
