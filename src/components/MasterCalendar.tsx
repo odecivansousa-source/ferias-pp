@@ -63,16 +63,17 @@ export const MasterCalendar: React.FC<MasterCalendarProps> = ({
       devolvidos: { sol: SolicitacaoFerias; pol: Perfil; eq: Equipe }[];
     }>();
 
-    solicitacoes.forEach(sol => {
+    (solicitacoes || []).forEach(sol => {
+      if (!sol) return;
       if (sol.status === 'REJEITADA' || sol.status === 'CANCELADA') return;
       if (selectedEquipeId !== 'TODAS' && sol.equipeId !== selectedEquipeId) return;
 
-      const pol = sol.policial || perfis.find(p => p.id === sol.policialId);
-      const eq = sol.equipe || equipes.find(e => e.id === sol.equipeId);
+      const pol = sol.policial || (perfis || []).find(p => p.id === sol.policialId);
+      const eq = sol.equipe || (equipes || []).find(e => e.id === sol.equipeId);
       if (!pol || !eq) return;
 
-      sol.periodos.forEach(p => {
-        if (!p.dataInicio || !p.dataFim) return;
+      (sol.periodos || []).forEach(p => {
+        if (!p || !p.dataInicio || !p.dataFim) return;
 
         const curr = new Date(p.dataInicio + 'T00:00:00');
         const end = new Date(p.dataFim + 'T00:00:00');

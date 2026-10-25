@@ -19,15 +19,50 @@ const STORAGE_KEYS = {
   ACTIVE_USER: 'ferias_pp_active_user_id',
 };
 
-// Inicializa o armazenamento local caso ainda não exista
+export const DEFAULT_FALLBACK_USER: Perfil = {
+  id: 'usr-admin',
+  matricula: 'ADM-99001',
+  nomeCompleto: 'Gestor Administrativo Costa [DEMO]',
+  equipeId: 'eq-1',
+  papel: 'admin',
+  situacao: 'ativo',
+  email: 'admin.teste@unidade.sap.sp.gov.br',
+  telefone: '(11) 98000-0001',
+};
+
+// Inicializa o armazenamento local com proteção contra JSON vazio ou corrompido
 function initLocalStorageMock() {
-  if (!localStorage.getItem(STORAGE_KEYS.EQUIPES)) {
+  try {
+    const rawEquipes = localStorage.getItem(STORAGE_KEYS.EQUIPES);
+    const parsedEquipes = rawEquipes ? JSON.parse(rawEquipes) : null;
+    if (!Array.isArray(parsedEquipes) || parsedEquipes.length === 0) {
+      localStorage.setItem(STORAGE_KEYS.EQUIPES, JSON.stringify(MOCK_EQUIPES));
+    }
+  } catch (e) {
     localStorage.setItem(STORAGE_KEYS.EQUIPES, JSON.stringify(MOCK_EQUIPES));
   }
-  if (!localStorage.getItem(STORAGE_KEYS.CONFIG)) {
+
+  try {
+    const rawConfig = localStorage.getItem(STORAGE_KEYS.CONFIG);
+    if (!rawConfig) {
+      localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(MOCK_CONFIGURACAO));
+    }
+  } catch (e) {
     localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(MOCK_CONFIGURACAO));
   }
-  if (!localStorage.getItem(STORAGE_KEYS.PERFIS)) {
+
+  try {
+    const rawPerfis = localStorage.getItem(STORAGE_KEYS.PERFIS);
+    const parsedPerfis = rawPerfis ? JSON.parse(rawPerfis) : null;
+    if (!Array.isArray(parsedPerfis) || parsedPerfis.length === 0) {
+      const mockPerfis = generateMockPoliciais();
+      localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(mockPerfis));
+
+      const { solicitacoes, historico } = generateMockSolicitacoes(mockPerfis);
+      localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
+      localStorage.setItem(STORAGE_KEYS.HISTORICO, JSON.stringify(historico));
+    }
+  } catch (e) {
     const mockPerfis = generateMockPoliciais();
     localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(mockPerfis));
 
@@ -72,7 +107,11 @@ export async function getEquipes(): Promise<Equipe[]> {
   }
 
   initLocalStorageMock();
-  return JSON.parse(localStorage.getItem(STORAGE_KEYS.EQUIPES) || '[]');
+  try {
+    const list = JSON.parse(localStorage.getItem(STORAGE_KEYS.EQUIPES) || '[]');
+    if (Array.isArray(list) && list.length > 0) return list;
+  } catch(e) {}
+  return MOCK_EQUIPES;
 }
 
 export async function updateEquipe(equipe: Equipe): Promise<void> {
@@ -128,7 +167,14 @@ export async function getConfiguracao(): Promise<ConfiguracaoFerias> {
   }
 
   initLocalStorageMock();
-  return JSON.parse(localStorage.getItem(STORAGE_KEYS.CONFIG) || JSON.stringify(MOCK_CONFIGURACAO));
+  try {
+    const saved = localStorage.getItem(STORAGE_KEYS.CONFIG);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && parsed.anoExercicio) return parsed;
+    }
+  } catch(e) {}
+  return MOCK_CONFIGURACAO;
 }
 
 export async function updateConfiguracao(config: ConfiguracaoFerias): Promise<void> {
@@ -183,7 +229,11 @@ export async function getPerfis(): Promise<Perfil[]> {
   }
 
   initLocalStorageMock();
-  return JSON.parse(localStorage.getItem(STORAGE_KEYS.PERFIS) || '[]');
+  try {
+    const list = JSON.parse(localStorage.getItem(STORAGE_KEYS.PERFIS) || '[]');
+    if (Array.isArray(list) && list.length > 0) return list;
+  } catch(e) {}
+  return generateMockPoliciais();
 }
 
 export async function savePerfil(perfil: Perfil): Promise<Perfil> {
@@ -273,15 +323,24 @@ export async function getSolicitacoes(anoExercicio?: number): Promise<Solicitaca
     }
   }
 
-  // Fallback LocalStorage
-  const raw = localStorage.getItem(STORAGE_KEYS.SOLICITACOES) || '[]';
-  const list: SolicitacaoFerias[] = JSON.parse(raw);
+  // Fallback LocalStorage seguro
+  let list: SolicitacaoFerias[] = [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SOLICITACOES);
+    if (raw) list = JSON.parse(raw);
+  } catch (e) {}
+
+  if (!Array.isArray(list) || list.length === 0) {
+    list = generateMockSolicitacoes(perfis).solicitacoes;
+    localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(list));
+  }
 
   // Enriquece com dados de policial e equipe
   const enriched = list.map(s => ({
     ...s,
-    policial: perfisMap.get(s.policialId),
-    equipe: equipesMap.get(s.equipeId),
+    periodos: Array.isArray(s.periodos) ? s.periodos : [],
+    policial: perfisMap.get(s.policialId) || perfis[0],
+    equipe: equipesMap.get(s.equipeId) || equipes[0],
   }));
 
   if (anoExercicio) {
