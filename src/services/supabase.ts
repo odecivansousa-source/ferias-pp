@@ -1,19 +1,13 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const DEFAULT_URL = 'https://owzamemhgbmrqmwlkqcc.supabase.co';
-const DEFAULT_KEY = 'sb_publishable_9Q9g9ziWIZuhq24zRPp11Q_OgIMhkq6';
+export const OFFICIAL_SUPABASE_URL = 'https://owzamemhgbmrqmwlkqcc.supabase.co';
+export const OFFICIAL_SUPABASE_KEY = 'sb_publishable_9Q9g9ziWIZuhq24zRPp11Q_OgIMhkq6';
 
-// Obtenção segura de credenciais: primeiro do localStorage (configurável pelo usuário no app), depois das variáveis de ambiente e fallback do projeto
+// Base oficial em nuvem compartilhada entre todos os aparelhos (PC e Celular)
 export function getSupabaseCredentials(): { url: string; anonKey: string } {
-  const localUrl = localStorage.getItem('ferias_pp_supabase_url');
-  const localKey = localStorage.getItem('ferias_pp_supabase_key');
-
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
-
   return {
-    url: (localUrl || envUrl || DEFAULT_URL).trim(),
-    anonKey: (localKey || envKey || DEFAULT_KEY).trim(),
+    url: OFFICIAL_SUPABASE_URL,
+    anonKey: OFFICIAL_SUPABASE_KEY,
   };
 }
 

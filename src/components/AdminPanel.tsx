@@ -131,7 +131,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (modalPerfil.id === 'usr-diretor' || modalPerfil.id === '00000000-0000-0000-0000-000000000001' || modalPerfil.papel === 'diretor') {
         localStorage.setItem('ferias_pp_logged_matricula', perfilToSave.matricula);
       }
-      setFeedback('Perfil salvo com sucesso!');
+      setFeedback('Perfil salvo com sucesso no Banco em Nuvem!');
       setTimeout(() => {
         setModalPerfil(null);
         onDataUpdated();
@@ -174,6 +174,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   return (
     <div className="space-y-6 animate-fadeIn">
+      {/* Indicador de Conexão com o Banco Oficial */}
+      <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs text-emerald-900 font-bold shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Banco em Nuvem Conectado em Tempo Real (Supabase)</span>
+        </div>
+        <span className="text-[11px] text-emerald-700 font-mono hidden sm:inline">owzamemhgbmrqmwlkqcc.supabase.co</span>
+      </div>
+
       {/* Subnavegação da Administração */}
       <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">

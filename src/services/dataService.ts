@@ -54,6 +54,9 @@ export const DEFAULT_FALLBACK_USER: Perfil = {
 // Inicializa o armazenamento local com proteção contra JSON vazio ou corrompido
 function initLocalStorageMock() {
   try {
+    localStorage.removeItem('ferias_pp_supabase_url');
+    localStorage.removeItem('ferias_pp_supabase_key');
+
     if (!localStorage.getItem('ferias_pp_diretor_senha')) {
       localStorage.setItem('ferias_pp_diretor_senha', '131220');
     }
@@ -297,11 +300,40 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
   const normalizedEquipeId = normalizeEquipeId(perfil.equipeId);
   const perfilNormalized = {
     ...perfil,
+    matricula: perfil.matricula.trim().toUpperCase(),
+    nomeCompleto: perfil.nomeCompleto.trim(),
     equipeId: normalizedEquipeId,
   };
 
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    const isNew = !perfilNormalized.id || perfilNormalized.id.startsWith('pol-') || perfilNormalized.id.startsWith('usr-');
+    const res = await supabase.from('perfis').upsert({
+      id: isNew ? undefined : perfilNormalized.id,
+      matricula: perfilNormalized.matricula,
+      nome_completo: perfilNormalized.nomeCompleto,
+      equipe_id: normalizedEquipeId,
+      papel: perfilNormalized.papel,
+      situacao: perfilNormalized.situacao,
+      email: perfilNormalized.email || null,
+      telefone: perfilNormalized.telefone || null,
+      senha: perfilNormalized.senha || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'matricula' }).select().single();
+
+    if (res.error) {
+      console.error('Erro crítico ao salvar perfil no Supabase:', res.error);
+      throw new Error(`Falha no Banco em Nuvem: ${res.error.message}`);
+    }
+
+    if ((res as any).data && (res as any).data.id) {
+      perfilNormalized.id = (res as any).data.id;
+    }
+  }
+
+  // Atualiza cache local garantindo sincronia perfeita com Supabase
   const perfis = await getPerfis();
-  const idx = perfis.findIndex(p => p.id === perfilNormalized.id || p.matricula === perfilNormalized.matricula);
+  const idx = perfis.findIndex(p => p.matricula === perfilNormalized.matricula);
   if (idx >= 0) {
     perfis[idx] = perfilNormalized;
   } else {
@@ -309,60 +341,25 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
   }
   localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(perfis));
 
-  const supabase = getSupabaseClient();
-  if (supabase && isSupabaseConnected()) {
-    try {
-      const res = await supabase.from('perfis').upsert({
-        id: perfilNormalized.id.startsWith('pol-') || perfilNormalized.id.startsWith('usr-') ? undefined : perfilNormalized.id,
-        matricula: perfilNormalized.matricula,
-        nome_completo: perfilNormalized.nomeCompleto,
-        equipe_id: normalizedEquipeId,
-        papel: perfilNormalized.papel,
-        situacao: perfilNormalized.situacao,
-        email: perfilNormalized.email,
-        telefone: perfilNormalized.telefone,
-        senha: perfilNormalized.senha,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'matricula' }).select().single();
-
-      if (res.error) {
-        console.warn('Erro ao persistir perfil no Supabase:', res.error);
-      } else if ((res as any).data && (res as any).data.id) {
-        const returnedId = (res as any).data.id;
-        perfilNormalized.id = returnedId;
-        const currentList = JSON.parse(localStorage.getItem(STORAGE_KEYS.PERFIS) || '[]');
-        const updatedList = currentList.map((p: any) => p.matricula === perfilNormalized.matricula ? { ...p, id: returnedId } : p);
-        localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(updatedList));
-      }
-    } catch (e) {
-      console.warn('Erro ao persistir perfil no Supabase:', e);
-    }
-  }
-
   return perfilNormalized;
 }
 
 export async function deletePerfil(id: string, matricula?: string): Promise<boolean> {
   const perfis = await getPerfis();
   const target = perfis.find(p => p.id === id || (matricula && p.matricula === matricula));
-  const mat = matricula || target?.matricula;
-  const filtered = perfis.filter(p => p.id !== id && (!mat || p.matricula !== mat));
-  localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(filtered));
+  const mat = (matricula || target?.matricula || '').trim().toUpperCase();
 
   const supabase = getSupabaseClient();
-  if (supabase && isSupabaseConnected()) {
-    try {
-      if (mat) {
-        const resMat = await supabase.from('perfis').delete().eq('matricula', mat);
-        if (resMat.error) console.warn('Erro ao deletar perfil por matricula no Supabase:', resMat.error);
-      }
-      if (id && id.length === 36 && id.includes('-')) {
-        await supabase.from('perfis').delete().eq('id', id);
-      }
-    } catch (e) {
-      console.warn('Erro ao deletar perfil no Supabase:', e);
+  if (supabase && mat) {
+    const resMat = await supabase.from('perfis').delete().eq('matricula', mat);
+    if (resMat.error) {
+      console.error('Erro ao deletar perfil no Supabase:', resMat.error);
+      throw new Error(`Falha ao excluir no Banco em Nuvem: ${resMat.error.message}`);
     }
   }
+
+  const filtered = perfis.filter(p => (!mat || p.matricula !== mat) && p.id !== id);
+  localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(filtered));
 
   return true;
 }
