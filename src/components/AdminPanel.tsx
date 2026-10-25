@@ -214,10 +214,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 onChange={(e) => setFilterPapel(e.target.value)}
                 className="bg-slate-100 border border-slate-200 text-xs font-bold text-navy-950 px-3 py-2 rounded-2xl outline-none"
               >
-                <option value="TODOS">Todos os Perfis</option>
-                <option value="policial">Policial</option>
-                <option value="diretor">Diretor</option>
-                <option value="admin">Administrador</option>
+                <option value="TODOS">Todos os Servidores</option>
+                <option value="policial">Policiais Penais</option>
+                <option value="diretor">Direção da Unidade</option>
               </select>
 
               {/* Busca */}
@@ -266,10 +265,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <td className="py-3 px-3 text-slate-600">{eq?.nome || '-'}</td>
                       <td className="py-3 px-3">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          p.papel === 'admin' ? 'bg-purple-100 text-purple-800' :
-                          p.papel === 'diretor' ? 'bg-navy-100 text-navy-800' : 'bg-slate-100 text-slate-700'
+                          (p.papel === 'diretor' || (p.papel as string) === 'admin') 
+                            ? 'bg-navy-900 text-gold-400 font-black' 
+                            : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                         }`}>
-                          {p.papel}
+                          {(p.papel === 'diretor' || (p.papel as string) === 'admin') ? 'Diretor (Acesso Total)' : 'Policial Penal'}
                         </span>
                       </td>
                       <td className="py-3 px-3">
@@ -524,9 +524,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onChange={(e) => setModalPerfil({ ...modalPerfil, papel: e.target.value as any })}
                     className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold outline-none"
                   >
-                    <option value="policial">Policial</option>
-                    <option value="diretor">Diretor</option>
-                    <option value="admin">Administrador</option>
+                    <option value="policial">Policial Penal</option>
+                    <option value="diretor">Diretor da Unidade (Acesso Total)</option>
                   </select>
                 </div>
               </div>

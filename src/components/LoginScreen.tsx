@@ -26,18 +26,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
       const mat = p.matricula.toUpperCase();
       if (mat === termo) return true;
       if (mat.replace(/[^A-Z0-9]/g, '') === termo.replace(/[^A-Z0-9]/g, '')) return true;
+      // Permite digitar termos amigáveis para Diretor
+      if (['DIR', 'DIRETOR', 'DIRETORIA', 'ADM', 'ADMIN'].includes(termo) && (p.papel === 'diretor' || (p.papel as string) === 'admin')) return true;
       // Permite digitar apenas o número final (ex: "001" ou "1")
       if (termo.length <= 3 && mat.endsWith(termo.padStart(3, '0'))) return true;
       return false;
     });
 
     if (!encontrado) {
-      setErro(`Matrícula "${matriculaInput}" não localizada no quadro funcional da unidade. Verifique o número digitado ou contate a administração.`);
+      setErro(`Matrícula "${matriculaInput}" não localizada no quadro funcional da unidade. Verifique o número digitado ou contate a Direção da unidade.`);
       return;
     }
 
     if (encontrado.situacao === 'inativo') {
-      setErro('Servidor com situação funcional inativa ou afastada. Contate o setor administrativo.');
+      setErro('Servidor com situação funcional inativa ou afastada. Contate a Direção da unidade.');
       return;
     }
 
@@ -46,7 +48,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
 
   const handleQuickLogin = (mat: string) => {
     setMatriculaInput(mat);
-    const encontrado = perfis.find(p => p.matricula === mat);
+    const encontrado = perfis.find(p => 
+      p.matricula.toUpperCase() === mat.toUpperCase() || 
+      (mat.startsWith('DIR') && p.papel === 'diretor')
+    );
     if (encontrado) {
       onLoginSuccess(encontrado);
     }
@@ -75,7 +80,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
               Sistema de Planejamento e Controle de Férias
             </p>
             <div className="mt-3 inline-block bg-gold-500/20 text-gold-300 border border-gold-500/30 text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
-              Acesso do Policial Penal
+              Acesso da Unidade: Policial Penal & Direção
             </div>
           </div>
 
@@ -96,13 +101,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                       setMatriculaInput(e.target.value);
                       setErro(null);
                     }}
-                    placeholder="Ex: PP-2026-001 ou digite o número"
+                    placeholder="Ex: PP-2026-001 ou DIR-01"
                     className="w-full text-sm font-mono font-bold px-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-navy-900 rounded-2xl outline-none text-navy-950 transition shadow-inner"
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
                   <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                  Basta digitar a matrícula cadastrada no quadro funcional.
+                  Basta digitar a matrícula funcional cadastrada na unidade.
                 </p>
               </div>
 
@@ -122,40 +127,32 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
               </button>
             </form>
 
-            {/* Demonstração Rápida / Teste em 1 Clique */}
+            {/* Apenas 2 Acessos na Unidade: Policial Penal e Diretor */}
             <div className="pt-4 border-t border-slate-100 space-y-2.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block text-center">
-                Atalhos de Demonstração (Clique para entrar):
+                Atalhos Rápidos de Acesso (Clique para entrar):
               </span>
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 gap-3 text-center text-xs">
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('PP-2026-001')}
-                  className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
-                  title="Entra como Policial Teste da Equipe 1"
+                  className="p-3 rounded-2xl border-2 border-emerald-100 bg-emerald-50/50 hover:bg-emerald-100/60 text-slate-700 transition flex flex-col items-center justify-center gap-1 text-center group"
+                  title="Entra como Policial Penal (Equipe 1)"
                 >
-                  <span className="block font-bold text-[11px] text-emerald-800">Policial</span>
-                  <span className="text-[9px] font-mono text-slate-400">PP-2026-001</span>
+                  <span className="block font-black text-xs text-emerald-900 group-hover:scale-105 transition">👮 Policial Penal</span>
+                  <span className="text-[10px] font-mono font-bold text-emerald-700">PP-2026-001</span>
+                  <span className="text-[9px] text-slate-500">Minhas Férias & Calendário</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('DIR-99002')}
-                  className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
-                  title="Entra como Diretor da Unidade"
+                  onClick={() => handleQuickLogin('DIR-01')}
+                  className="p-3 rounded-2xl border-2 border-navy-200 bg-navy-50/70 hover:bg-navy-100 text-navy-950 transition flex flex-col items-center justify-center gap-1 text-center group"
+                  title="Entra como Diretor da Unidade com comando total"
                 >
-                  <span className="block font-bold text-[11px] text-navy-800">Diretor</span>
-                  <span className="text-[9px] font-mono text-slate-400">DIR-99002</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickLogin('ADM-99001')}
-                  className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition"
-                  title="Entra como Administrador Geral"
-                >
-                  <span className="block font-bold text-[11px] text-purple-800">Admin</span>
-                  <span className="text-[9px] font-mono text-slate-400">ADM-99001</span>
+                  <span className="block font-black text-xs text-navy-950 group-hover:scale-105 transition">🎖️ Diretor da Unidade</span>
+                  <span className="text-[10px] font-mono font-bold text-navy-800">DIR-01</span>
+                  <span className="text-[9px] font-bold text-gold-700">Acesso Total a Todos Comandos</span>
                 </button>
               </div>
             </div>

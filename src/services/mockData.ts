@@ -49,26 +49,26 @@ export const MOCK_CONFIGURACAO: ConfiguracaoFerias = {
 // Gerador de 120 Policiais Penais Fictícios (30 por equipe) devidamente rotulados como dados de teste
 export function generateMockPoliciais(): Perfil[] {
   const perfis: Perfil[] = [
-    // Usuário Administrador de Teste
-    {
-      id: 'usr-admin',
-      matricula: 'ADM-99001',
-      nomeCompleto: 'Gestor Administrativo Costa [DEMO]',
-      equipeId: 'eq-1',
-      papel: 'admin',
-      situacao: 'ativo',
-      email: 'admin.teste@unidade.sap.sp.gov.br',
-      telefone: '(11) 98000-0001',
-    },
-    // Usuário Diretor de Teste
+    // Diretor da Unidade (Acesso Total a todos os comandos do sistema)
     {
       id: 'usr-diretor',
+      matricula: 'DIR-01',
+      nomeCompleto: 'Diretor Geral Dr. Ramos [DEMO]',
+      equipeId: 'eq-1',
+      papel: 'diretor',
+      situacao: 'ativo',
+      email: 'diretoria@unidade.sap.sp.gov.br',
+      telefone: '(11) 98000-0001',
+    },
+    // Matrícula alternativa de Direção para compatibilidade
+    {
+      id: 'usr-diretor-adjunto',
       matricula: 'DIR-99002',
-      nomeCompleto: 'Diretor de Segurança Dr. Ramos [DEMO]',
+      nomeCompleto: 'Diretor Adjunto de Segurança [DEMO]',
       equipeId: 'eq-2',
       papel: 'diretor',
       situacao: 'ativo',
-      email: 'diretoria.teste@unidade.sap.sp.gov.br',
+      email: 'diretoria.seguranca@unidade.sap.sp.gov.br',
       telefone: '(11) 98000-0002',
     },
   ];

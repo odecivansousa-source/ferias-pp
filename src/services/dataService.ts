@@ -20,13 +20,13 @@ const STORAGE_KEYS = {
 };
 
 export const DEFAULT_FALLBACK_USER: Perfil = {
-  id: 'usr-admin',
-  matricula: 'ADM-99001',
-  nomeCompleto: 'Gestor Administrativo Costa [DEMO]',
+  id: 'usr-diretor',
+  matricula: 'DIR-01',
+  nomeCompleto: 'Diretor Geral Dr. Ramos [DEMO]',
   equipeId: 'eq-1',
-  papel: 'admin',
+  papel: 'diretor',
   situacao: 'ativo',
-  email: 'admin.teste@unidade.sap.sp.gov.br',
+  email: 'diretoria@unidade.sap.sp.gov.br',
   telefone: '(11) 98000-0001',
 };
 
@@ -231,7 +231,12 @@ export async function getPerfis(): Promise<Perfil[]> {
   initLocalStorageMock();
   try {
     const list = JSON.parse(localStorage.getItem(STORAGE_KEYS.PERFIS) || '[]');
-    if (Array.isArray(list) && list.length > 0) return list;
+    if (Array.isArray(list) && list.length > 0) {
+      return list.map((p: any) => ({
+        ...p,
+        papel: p.papel === 'admin' ? 'diretor' : p.papel,
+      }));
+    }
   } catch(e) {}
   return generateMockPoliciais();
 }
@@ -565,7 +570,7 @@ export async function addHistoricoAuditoria(item: HistoricoAuditoria): Promise<v
 
 // Usuário Ativo Atual (Simulador de Login / Troca de Perfil)
 export function getActiveUserId(): string {
-  return localStorage.getItem(STORAGE_KEYS.ACTIVE_USER) || 'usr-admin';
+  return localStorage.getItem(STORAGE_KEYS.ACTIVE_USER) || 'usr-diretor';
 }
 
 export function setActiveUserId(id: string): void {

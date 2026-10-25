@@ -117,10 +117,9 @@ export function App() {
 
     if (user.papel === 'policial') {
       setActiveTab('minhas-ferias');
-    } else if (user.papel === 'diretor') {
-      setActiveTab('direcao');
     } else {
-      setActiveTab('calendario');
+      // Diretor da Unidade com acesso total é direcionado para a gestão e decisões
+      setActiveTab('direcao');
     }
   };
 
