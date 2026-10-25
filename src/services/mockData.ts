@@ -48,7 +48,7 @@ export const MOCK_CONFIGURACAO: ConfiguracaoFerias = {
 
 // Perfil inicial do Diretor da Unidade (Matrícula inicial 123456)
 export const INITIAL_DIRECTOR_PROFILE: Perfil = {
-  id: 'usr-diretor',
+  id: '00000000-0000-0000-0000-000000000001',
   matricula: '123456',
   nomeCompleto: 'Diretor da Unidade',
   equipeId: '11111111-1111-1111-1111-111111111111',

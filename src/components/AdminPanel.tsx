@@ -128,7 +128,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       await savePerfil(perfilToSave);
       // Se a matrícula do diretor for alterada, atualiza a sessão local do navegador
-      if (modalPerfil.id === 'usr-diretor') {
+      if (modalPerfil.id === 'usr-diretor' || modalPerfil.id === '00000000-0000-0000-0000-000000000001' || modalPerfil.papel === 'diretor') {
         localStorage.setItem('ferias_pp_logged_matricula', perfilToSave.matricula);
       }
       setFeedback('Perfil salvo com sucesso!');
@@ -164,10 +164,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleResetDemo = () => {
+  const handleResetDemo = async () => {
     if (confirm('Deseja realmente zerar todos os cadastros e recomeçar do zero? O sistema manterá apenas o Diretor da Unidade (matrícula 123456).')) {
-      resetDemoData();
-      alert('Quadro da unidade zerado com sucesso!');
+      await resetDemoData();
+      alert('Quadro da unidade e solicitações zerados com sucesso!');
       onDataUpdated();
     }
   };

@@ -33,8 +33,14 @@ export function normalizeEquipeId(id?: string): string {
   return '11111111-1111-1111-1111-111111111111';
 }
 
+export function normalizeUserId(id?: string): string {
+  if (!id || id === 'usr-diretor') return '00000000-0000-0000-0000-000000000001';
+  if (id.length === 36 && id.includes('-')) return id;
+  return '00000000-0000-0000-0000-000000000001';
+}
+
 export const DEFAULT_FALLBACK_USER: Perfil = {
-  id: 'usr-diretor',
+  id: '00000000-0000-0000-0000-000000000001',
   matricula: '123456',
   nomeCompleto: 'Diretor da Unidade',
   equipeId: '11111111-1111-1111-1111-111111111111',
@@ -48,19 +54,18 @@ export const DEFAULT_FALLBACK_USER: Perfil = {
 // Inicializa o armazenamento local com proteção contra JSON vazio ou corrompido
 function initLocalStorageMock() {
   try {
-    // Garante que a senha inicial do diretor esteja configurada
     if (!localStorage.getItem('ferias_pp_diretor_senha')) {
       localStorage.setItem('ferias_pp_diretor_senha', '131220');
     }
 
-    // Migration: Limpeza forçada de dados fictícios para permitir cadastro limpo do zero
-    if (localStorage.getItem('ferias_pp_clean_slate_v5') !== 'true') {
+    // Migration v6: Limpeza forçada de dados para garantir base zerada e sincronizada com Supabase
+    if (localStorage.getItem('ferias_pp_clean_slate_v6') !== 'true') {
       localStorage.removeItem(STORAGE_KEYS.PERFIS);
       localStorage.removeItem(STORAGE_KEYS.SOLICITACOES);
       localStorage.removeItem(STORAGE_KEYS.HISTORICO);
       localStorage.removeItem('ferias_pp_logged_matricula');
       localStorage.setItem('ferias_pp_diretor_senha', '131220');
-      localStorage.setItem('ferias_pp_clean_slate_v5', 'true');
+      localStorage.setItem('ferias_pp_clean_slate_v6', 'true');
     }
   } catch (e) {}
 
@@ -100,16 +105,29 @@ function initLocalStorageMock() {
   }
 }
 
-// Reset completo dos dados locais para teste limpo
-export function resetDemoData(): void {
+// Reset completo dos dados para início limpo no Supabase e no aparelho
+export async function resetDemoData(): Promise<void> {
   localStorage.removeItem(STORAGE_KEYS.EQUIPES);
   localStorage.removeItem(STORAGE_KEYS.PERFIS);
   localStorage.removeItem(STORAGE_KEYS.SOLICITACOES);
   localStorage.removeItem(STORAGE_KEYS.CONFIG);
   localStorage.removeItem(STORAGE_KEYS.HISTORICO);
   localStorage.removeItem('ferias_pp_logged_matricula');
-  localStorage.setItem('ferias_pp_clean_slate_v4', 'true');
+  localStorage.setItem('ferias_pp_diretor_senha', '131220');
+  localStorage.setItem('ferias_pp_clean_slate_v6', 'true');
   initLocalStorageMock();
+
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConnected()) {
+    try {
+      await supabase.from('periodos_ferias').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('historico_decisoes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('solicitacoes_ferias').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('perfis').delete().neq('matricula', '123456');
+    } catch (e) {
+      console.warn('Erro ao limpar Supabase no reset:', e);
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -240,56 +258,21 @@ export async function getPerfis(): Promise<Perfil[]> {
   if (supabase && isSupabaseConnected()) {
     try {
       const { data, error } = await supabase.from('perfis').select('*').order('nome_completo');
-      if (!error && data && data.length > 0) {
-        // Auto-sincronização: envia cadastros salvos no localStorage para a nuvem
-        try {
-          const rawLocal = localStorage.getItem(STORAGE_KEYS.PERFIS);
-          const localList: Perfil[] = rawLocal ? JSON.parse(rawLocal) : [];
-          for (const lp of localList) {
-            const matLimpa = lp.matricula ? lp.matricula.trim().toUpperCase() : '';
-            if (matLimpa && matLimpa !== '123456') {
-              const jaExiste = data.some(d => d.matricula.trim().toUpperCase() === matLimpa);
-              if (!jaExiste) {
-                const equipeValida = (lp.equipeId && lp.equipeId.length === 36) ? lp.equipeId : '11111111-1111-1111-1111-111111111111';
-                await supabase.from('perfis').upsert({
-                  matricula: matLimpa,
-                  nome_completo: lp.nomeCompleto || 'Policial Penal',
-                  equipe_id: equipeValida,
-                  papel: lp.papel || 'policial',
-                  situacao: lp.situacao || 'ativo',
-                  email: lp.email || null,
-                  telefone: lp.telefone || null,
-                  senha: lp.senha || null,
-                  updated_at: new Date().toISOString(),
-                }, { onConflict: 'matricula' });
-                data.push({
-                  id: lp.id,
-                  matricula: matLimpa,
-                  nome_completo: lp.nomeCompleto || 'Policial Penal',
-                  equipe_id: equipeValida,
-                  papel: lp.papel || 'policial',
-                  situacao: lp.situacao || 'ativo',
-                  email: lp.email,
-                  telefone: lp.telefone,
-                  senha: lp.senha,
-                });
-              }
-            }
-          }
-        } catch (e) {}
-
-        return data.map(d => ({
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const perfisFormatados: Perfil[] = data.map(d => ({
           id: d.id,
           authUserId: d.auth_user_id,
           matricula: d.matricula,
           nomeCompleto: d.nome_completo,
-          equipeId: d.equipe_id,
+          equipeId: normalizeEquipeId(d.equipe_id),
           papel: d.papel,
           situacao: d.situacao,
           email: d.email,
           telefone: d.telefone,
           senha: d.senha || (d.papel === 'diretor' || d.papel === 'admin' ? getDiretorSenha() : undefined),
         }));
+        localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(perfisFormatados));
+        return perfisFormatados;
       }
     } catch (e) {
       console.warn('Erro ao carregar perfis do Supabase:', e);
@@ -340,10 +323,16 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
         telefone: perfilNormalized.telefone,
         senha: perfilNormalized.senha,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'matricula' });
+      }, { onConflict: 'matricula' }).select().single();
 
       if (res.error) {
         console.warn('Erro ao persistir perfil no Supabase:', res.error);
+      } else if ((res as any).data && (res as any).data.id) {
+        const returnedId = (res as any).data.id;
+        perfilNormalized.id = returnedId;
+        const currentList = JSON.parse(localStorage.getItem(STORAGE_KEYS.PERFIS) || '[]');
+        const updatedList = currentList.map((p: any) => p.matricula === perfilNormalized.matricula ? { ...p, id: returnedId } : p);
+        localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(updatedList));
       }
     } catch (e) {
       console.warn('Erro ao persistir perfil no Supabase:', e);
@@ -388,8 +377,8 @@ export async function getSolicitacoes(anoExercicio?: number): Promise<Solicitaca
         query = query.eq('ano_exercicio', anoExercicio);
       }
       const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        return data.map(d => {
+      if (!error && Array.isArray(data)) {
+        const mapped = data.map(d => {
           const pol = perfisMap.get(d.policial_id);
           const eq = equipesMap.get(d.equipe_id);
           const periodos = (d.periodos_ferias || []).map((p: any) => ({
@@ -419,21 +408,23 @@ export async function getSolicitacoes(anoExercicio?: number): Promise<Solicitaca
             equipe: eq,
           };
         });
+        localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(mapped));
+        return mapped;
       }
     } catch (e) {
       console.warn('Erro ao carregar solicitações do Supabase, usando local:', e);
     }
   }
 
-  // Fallback LocalStorage seguro
+  // Fallback LocalStorage seguro (base limpa)
   let list: SolicitacaoFerias[] = [];
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SOLICITACOES);
     if (raw) list = JSON.parse(raw);
   } catch (e) {}
 
-  if (!Array.isArray(list) || list.length === 0) {
-    list = generateMockSolicitacoes(perfis).solicitacoes;
+  if (!Array.isArray(list)) {
+    list = [];
     localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(list));
   }
 
@@ -456,9 +447,13 @@ export async function createSolicitacao(
 ): Promise<SolicitacaoFerias> {
   const id = 'sol-' + Date.now();
   const now = new Date().toISOString();
+  const normalizedPolicialId = normalizeUserId(nova.policialId);
+  const normalizedEquipeId = normalizeEquipeId(nova.equipeId);
 
   const full: SolicitacaoFerias = {
     ...nova,
+    policialId: normalizedPolicialId,
+    equipeId: normalizedEquipeId,
     id,
     createdAt: now,
     updatedAt: now,
@@ -469,19 +464,15 @@ export async function createSolicitacao(
     })),
   };
 
-  const solicitacoes = await getSolicitacoes();
-  solicitacoes.unshift(full);
-  localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
-
-  // Tenta sincronizar com Supabase se conectado
+  // Sincroniza com Supabase se conectado
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
     try {
       const { data: solData, error: solErr } = await supabase
         .from('solicitacoes_ferias')
         .insert({
-          policial_id: full.policialId,
-          equipe_id: full.equipeId,
+          policial_id: normalizedPolicialId,
+          equipe_id: normalizedEquipeId,
           ano_exercicio: full.anoExercicio,
           modalidade: full.modalidade,
           status: full.status,
@@ -491,6 +482,7 @@ export async function createSolicitacao(
         .single();
 
       if (!solErr && solData) {
+        full.id = solData.id;
         const periodosPayload = full.periodos.map(p => ({
           solicitacao_id: solData.id,
           numero_periodo: p.numeroPeriodo,
@@ -499,11 +491,17 @@ export async function createSolicitacao(
           quantidade_dias: p.quantidadeDias,
         }));
         await supabase.from('periodos_ferias').insert(periodosPayload);
+      } else if (solErr) {
+        console.warn('Erro ao inserir solicitacao no Supabase:', solErr);
       }
     } catch (e) {
       console.warn('Erro ao inserir no Supabase:', e);
     }
   }
+
+  const solicitacoes = await getSolicitacoes();
+  solicitacoes.unshift(full);
+  localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
 
   return full;
 }
@@ -517,13 +515,14 @@ export async function aprovarSolicitacaoTransacional(
   justificativa: string = 'Aprovada pela Direção'
 ): Promise<{ sucesso: boolean; mensagem: string }> {
   const supabase = getSupabaseClient();
+  const normalizedDecididaPor = normalizeUserId(decididaPorId);
 
   // Se Supabase estiver conectado, executa a Stored Procedure transacional no banco
   if (supabase && isSupabaseConnected()) {
     try {
       const { data, error } = await supabase.rpc('fn_aprovar_solicitacao', {
         p_solicitacao_id: solicitacaoId,
-        p_decidida_por: decididaPorId,
+        p_decidida_por: normalizedDecididaPor,
         p_justificativa: justificativa,
       });
 
@@ -563,7 +562,7 @@ export async function aprovarSolicitacaoTransacional(
 
   // Se passou sem conflitos, aprova e grava histórico
   target.status = 'APROVADA';
-  target.decididaPor = decididaPorId;
+  target.decididaPor = normalizedDecididaPor;
   target.decididaEm = new Date().toISOString();
   target.justificativaDecisao = justificativa;
   target.updatedAt = new Date().toISOString();
@@ -572,11 +571,11 @@ export async function aprovarSolicitacaoTransacional(
 
   // Registrar auditoria
   const perfis = await getPerfis();
-  const responsavel = perfis.find(p => p.id === decididaPorId);
+  const responsavel = perfis.find(p => p.id === normalizedDecididaPor);
   await addHistoricoAuditoria({
     id: 'hist-' + Date.now(),
     solicitacaoId,
-    responsavelId: decididaPorId,
+    responsavelId: normalizedDecididaPor,
     responsavelNome: responsavel?.nomeCompleto || 'Diretoria',
     acao: 'APROVACAO',
     novoStatus: 'APROVADA',
@@ -596,11 +595,13 @@ export async function decidirSolicitacao(
   justificativa: string
 ): Promise<{ sucesso: boolean; mensagem: string }> {
   const supabase = getSupabaseClient();
+  const normalizedDecididaPor = normalizeUserId(decididaPorId);
+
   if (supabase && isSupabaseConnected()) {
     try {
       const { data, error } = await supabase.rpc('fn_decidir_solicitacao', {
         p_solicitacao_id: solicitacaoId,
-        p_decidida_por: decididaPorId,
+        p_decidida_por: normalizedDecididaPor,
         p_novo_status: novoStatus,
         p_justificativa: justificativa,
       });
@@ -621,7 +622,7 @@ export async function decidirSolicitacao(
 
   const statusAnterior = target.status;
   target.status = novoStatus;
-  target.decididaPor = decididaPorId;
+  target.decididaPor = normalizedDecididaPor;
   target.decididaEm = new Date().toISOString();
   target.justificativaDecisao = justificativa;
   target.updatedAt = new Date().toISOString();
@@ -629,11 +630,11 @@ export async function decidirSolicitacao(
   localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
 
   const perfis = await getPerfis();
-  const responsavel = perfis.find(p => p.id === decididaPorId);
+  const responsavel = perfis.find(p => p.id === normalizedDecididaPor);
   await addHistoricoAuditoria({
     id: 'hist-' + Date.now(),
     solicitacaoId,
-    responsavelId: decididaPorId,
+    responsavelId: normalizedDecididaPor,
     responsavelNome: responsavel?.nomeCompleto || 'Diretoria',
     acao: novoStatus,
     novoStatus,
@@ -667,7 +668,7 @@ export async function addHistoricoAuditoria(item: HistoricoAuditoria): Promise<v
 
 // Usuário Ativo Atual (Simulador de Login / Troca de Perfil)
 export function getActiveUserId(): string {
-  return localStorage.getItem(STORAGE_KEYS.ACTIVE_USER) || 'usr-diretor';
+  return localStorage.getItem(STORAGE_KEYS.ACTIVE_USER) || '00000000-0000-0000-0000-000000000001';
 }
 
 export function setActiveUserId(id: string): void {
@@ -702,10 +703,10 @@ export async function salvarDadosDiretor(nomeCompleto: string, matricula: string
     await savePerfil(diretor);
   } else {
     diretor = {
-      id: 'usr-diretor',
+      id: '00000000-0000-0000-0000-000000000001',
       nomeCompleto: nomeCompleto.trim(),
       matricula: matricula.trim().toUpperCase(),
-      equipeId: 'eq-1',
+      equipeId: '11111111-1111-1111-1111-111111111111',
       papel: 'diretor',
       situacao: 'ativo',
       email: 'diretoria@unidade.local',

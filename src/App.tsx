@@ -116,6 +116,13 @@ export function App() {
     setActiveUserId(user.id);
     localStorage.setItem('ferias_pp_logged_matricula', user.matricula);
 
+    setPerfis(prev => {
+      if (!prev.find(p => p.matricula === user.matricula)) {
+        return [...prev, user];
+      }
+      return prev;
+    });
+
     if (user.papel === 'policial') {
       setActiveTab('minhas-ferias');
     } else {

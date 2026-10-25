@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, AlertCircle, KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Perfil } from '../types';
-import { getDiretorSenha } from '../services/dataService';
+import { getDiretorSenha, getPerfis } from '../services/dataService';
 
 interface LoginScreenProps {
   perfis: Perfil[];
@@ -13,6 +13,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
   const [senhaInput, setSenhaInput] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [verificando, setVerificando] = useState(false);
 
   // Verifica se a matrícula informada pertence ao Diretor da Unidade
   const termoMatricula = matriculaInput.trim().toUpperCase();
@@ -29,7 +30,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
     ? servidorEncontrado.papel === 'diretor' || (servidorEncontrado.papel as string) === 'admin'
     : false;
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
 
@@ -39,30 +40,51 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
       return;
     }
 
-    if (!servidorEncontrado) {
-      // Se na base deste aparelho só existir o Diretor padrão (123456), orienta o usuário sobre o primeiro acesso
+    let targetUser = servidorEncontrado;
+
+    // Se não encontrou de imediato no cache do aparelho, consulta o Supabase em tempo real
+    if (!targetUser) {
+      try {
+        setVerificando(true);
+        const atualizados = await getPerfis();
+        targetUser = atualizados.find(p => {
+          const mat = p.matricula.trim().toUpperCase();
+          if (mat === termo) return true;
+          if (mat.replace(/[^A-Z0-9]/g, '') === termo.replace(/[^A-Z0-9]/g, '')) return true;
+          return false;
+        }) || null;
+      } catch (err) {
+        console.warn('Erro ao consultar banco durante login:', err);
+      } finally {
+        setVerificando(false);
+      }
+    }
+
+    if (!targetUser) {
       const apenasDiretorPadrao = perfis.length === 1 && perfis[0].matricula === '123456';
       if (apenasDiretorPadrao) {
-        setErro(`Matrícula "${matriculaInput}" não encontrada neste aparelho. Se este é o primeiro acesso neste celular, entre com a matrícula inicial da Direção (123456 e senha 131220) para cadastrar os servidores, ou conecte o banco em nuvem.`);
+        setErro(`Matrícula "${matriculaInput}" não encontrada. Apenas a conta da Direção está registrada no momento. Acesse como Diretor (123456 / 131220) para cadastrar os servidores.`);
       } else {
         setErro(`Matrícula "${matriculaInput}" não cadastrada no sistema. O acesso é permitido somente para servidores previamente cadastrados pela Direção da Unidade.`);
       }
       return;
     }
 
-    if (servidorEncontrado.situacao === 'inativo') {
+    if (targetUser.situacao === 'inativo') {
       setErro('Servidor com situação funcional inativa ou afastada. Contate a Direção da unidade.');
       return;
     }
 
+    const ehDiretor = targetUser.papel === 'diretor' || (targetUser.papel as string) === 'admin';
+
     // Se for o DIRETOR DA UNIDADE: validação obrigatória de senha exclusiva
-    if (isDiretor) {
+    if (ehDiretor) {
       if (!senhaInput.trim()) {
         setErro('O Diretor da Unidade deve informar a senha de acesso (senha inicial: 131220).');
         return;
       }
 
-      const senhaCorreta = servidorEncontrado.senha || getDiretorSenha();
+      const senhaCorreta = targetUser.senha || getDiretorSenha();
       if (senhaInput.trim() !== senhaCorreta) {
         setErro('Senha de acesso do Diretor incorreta. Por favor, verifique e tente novamente.');
         return;
@@ -70,7 +92,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
     }
 
     // Policial Penal acessa diretamente sem senha
-    onLoginSuccess(servidorEncontrado);
+    onLoginSuccess(targetUser);
   };
 
   return (
@@ -178,9 +200,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
 
               <button
                 type="submit"
-                className="w-full py-4 px-6 rounded-2xl font-black text-sm text-white bg-navy-950 hover:bg-navy-900 active:scale-[0.99] shadow-lg shadow-navy-950/20 transition flex items-center justify-center gap-2 mt-2"
+                disabled={verificando}
+                className="w-full py-4 px-6 rounded-2xl font-black text-sm text-white bg-navy-950 hover:bg-navy-900 active:scale-[0.99] shadow-lg shadow-navy-950/20 transition flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
               >
-                {isDiretor ? (
+                {verificando ? (
+                  <span>Verificando matrícula...</span>
+                ) : isDiretor ? (
                   <>
                     <KeyRound className="w-4 h-4 text-gold-400" />
                     <span>Entrar como Diretor</span>
