@@ -1,0 +1,21 @@
+{
+  "short_name": "FÉRIAS PP",
+  "name": "FÉRIAS PP — Sistema de Planejamento de Férias",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./",
+  "background_color": "#0f243a",
+  "theme_color": "#0f243a",
+  "display": "standalone",
+  "orientation": "portrait"
+}
