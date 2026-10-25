@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.perfis (
   situacao situacao_funcional NOT NULL DEFAULT 'ativo',
   email VARCHAR(255),
   telefone VARCHAR(50),
+  senha VARCHAR(255),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -319,61 +320,62 @@ ALTER TABLE public.solicitacoes_ferias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.periodos_ferias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.historico_decisoes ENABLE ROW LEVEL SECURITY;
 
--- Regras de Leitura e Escrita
--- Equipes: Qualquer usuário autenticado pode ler equipes ativas
-CREATE POLICY "Leitura pública de equipes ativas"
-ON public.equipes FOR SELECT
-USING (true);
+-- Regras de Leitura e Escrita (RLS)
+-- Equipes: Leitura e Edição
+CREATE POLICY "Leitura de equipes" ON public.equipes FOR SELECT USING (true);
+CREATE POLICY "Gestao de equipes" ON public.equipes FOR ALL USING (true);
 
--- Perfis: Usuários podem ler seu próprio perfil e perfis da sua unidade
-CREATE POLICY "Leitura de perfis autorizada"
-ON public.perfis FOR SELECT
-USING (true);
+-- Perfis: Leitura, Cadastro, Atualização e Exclusão
+CREATE POLICY "Leitura de perfis autorizada" ON public.perfis FOR SELECT USING (true);
+CREATE POLICY "Insercao de perfis" ON public.perfis FOR INSERT WITH CHECK (true);
+CREATE POLICY "Atualizacao de perfis" ON public.perfis FOR UPDATE USING (true);
+CREATE POLICY "Delecao de perfis" ON public.perfis FOR DELETE USING (true);
 
--- Configurações de Férias: Leitura liberada para visualização das regras
-CREATE POLICY "Leitura de regras de ferias"
-ON public.configuracoes_ferias FOR SELECT
-USING (true);
+-- Configurações de Férias: Leitura e Edição
+CREATE POLICY "Leitura de regras de ferias" ON public.configuracoes_ferias FOR SELECT USING (true);
+CREATE POLICY "Gestao de regras de ferias" ON public.configuracoes_ferias FOR ALL USING (true);
 
--- Solicitações: Policial pode ver as suas; Diretores e Admins veem todas
-CREATE POLICY "Leitura de solicitacoes"
-ON public.solicitacoes_ferias FOR SELECT
-USING (true);
+-- Solicitações: Leitura, Criação e Atualização
+CREATE POLICY "Leitura de solicitacoes" ON public.solicitacoes_ferias FOR SELECT USING (true);
+CREATE POLICY "Criacao de solicitacao" ON public.solicitacoes_ferias FOR INSERT WITH CHECK (true);
+CREATE POLICY "Atualizacao de solicitacao" ON public.solicitacoes_ferias FOR UPDATE USING (true);
+CREATE POLICY "Delecao de solicitacao" ON public.solicitacoes_ferias FOR DELETE USING (true);
 
-CREATE POLICY "Criacao de solicitacao pelo policial"
-ON public.solicitacoes_ferias FOR INSERT
-WITH CHECK (true);
+-- Períodos: Leitura, Criação e Atualização
+CREATE POLICY "Leitura de periodos" ON public.periodos_ferias FOR SELECT USING (true);
+CREATE POLICY "Insercao de periodos" ON public.periodos_ferias FOR INSERT WITH CHECK (true);
+CREATE POLICY "Gestao de periodos" ON public.periodos_ferias FOR ALL USING (true);
 
-CREATE POLICY "Atualizacao de solicitacao"
-ON public.solicitacoes_ferias FOR UPDATE
-USING (true);
-
--- Períodos: Acompanham a solicitação
-CREATE POLICY "Leitura de periodos"
-ON public.periodos_ferias FOR SELECT
-USING (true);
-
-CREATE POLICY "Insercao de periodos"
-ON public.periodos_ferias FOR INSERT
-WITH CHECK (true);
-
--- Auditoria: Diretores e Admins podem ler
-CREATE POLICY "Leitura de auditoria"
-ON public.historico_decisoes FOR SELECT
-USING (true);
+-- Auditoria: Leitura e Criação
+CREATE POLICY "Leitura de auditoria" ON public.historico_decisoes FOR SELECT USING (true);
+CREATE POLICY "Insercao de auditoria" ON public.historico_decisoes FOR INSERT WITH CHECK (true);
 
 -- ==============================================================================
--- CARGA INICIAL PADRÃO (4 Equipes e Configuração Anual Inicial)
+-- CARGA INICIAL PADRÃO (Equipes, Configuração e Diretor Inicial)
 -- ==============================================================================
 
-INSERT INTO public.equipes (nome, codigo, limite_afastamentos_simultaneos, efetivo_minimo_requerido)
+INSERT INTO public.equipes (id, nome, codigo, limite_afastamentos_simultaneos, efetivo_minimo_requerido)
 VALUES
-  ('Equipe 1', 'EQ-01', 3, 20),
-  ('Equipe 2', 'EQ-02', 3, 20),
-  ('Equipe 3', 'EQ-03', 3, 20),
-  ('Equipe 4', 'EQ-04', 3, 20)
+  ('11111111-1111-1111-1111-111111111111', 'Equipe 1', 'EQ-01', 3, 20),
+  ('22222222-2222-2222-2222-222222222222', 'Equipe 2', 'EQ-02', 3, 20),
+  ('33333333-3333-3333-3333-333333333333', 'Equipe 3', 'EQ-03', 3, 20),
+  ('44444444-4444-4444-4444-444444444444', 'Equipe 4', 'EQ-04', 3, 20)
 ON CONFLICT (codigo) DO NOTHING;
 
 INSERT INTO public.configuracoes_ferias (ano_exercicio, abertura_solicitacoes, fechamento_solicitacoes, antecedencia_minima_dias, permitir_fracionamento)
 VALUES (2026, '2026-01-01', '2026-12-31', 30, true)
 ON CONFLICT (ano_exercicio) DO NOTHING;
+
+-- Diretor da Unidade inicial (Matrícula: 123456 / Senha: 131220)
+INSERT INTO public.perfis (id, matricula, nome_completo, equipe_id, papel, situacao, email, senha)
+VALUES (
+  '00000000-0000-0000-0000-000000000001',
+  '123456',
+  'Diretor da Unidade',
+  '11111111-1111-1111-1111-111111111111',
+  'diretor',
+  'ativo',
+  'diretoria@unidade.local',
+  '131220'
+)
+ON CONFLICT (matricula) DO NOTHING;

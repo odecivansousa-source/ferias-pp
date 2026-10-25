@@ -237,6 +237,7 @@ export async function getPerfis(): Promise<Perfil[]> {
           situacao: d.situacao,
           email: d.email,
           telefone: d.telefone,
+          senha: d.senha || (d.papel === 'diretor' || d.papel === 'admin' ? getDiretorSenha() : undefined),
         }));
       }
     } catch (e) {
@@ -260,7 +261,7 @@ export async function getPerfis(): Promise<Perfil[]> {
 
 export async function savePerfil(perfil: Perfil): Promise<Perfil> {
   const perfis = await getPerfis();
-  const idx = perfis.findIndex(p => p.id === perfil.id);
+  const idx = perfis.findIndex(p => p.id === perfil.id || p.matricula === perfil.matricula);
   if (idx >= 0) {
     perfis[idx] = perfil;
   } else {
@@ -280,8 +281,9 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
         situacao: perfil.situacao,
         email: perfil.email,
         telefone: perfil.telefone,
+        senha: perfil.senha,
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: 'matricula' });
     } catch (e) {
       console.warn('Erro ao persistir perfil no Supabase:', e);
     }
