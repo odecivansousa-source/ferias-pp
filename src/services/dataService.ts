@@ -344,13 +344,18 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
 
 export async function deletePerfil(id: string): Promise<boolean> {
   const perfis = await getPerfis();
+  const target = perfis.find(p => p.id === id);
   const filtered = perfis.filter(p => p.id !== id);
   localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(filtered));
 
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
     try {
-      await supabase.from('perfis').delete().eq('id', id);
+      if (id.length === 36 && id.includes('-')) {
+        await supabase.from('perfis').delete().eq('id', id);
+      } else if (target) {
+        await supabase.from('perfis').delete().eq('matricula', target.matricula);
+      }
     } catch (e) {
       console.warn('Erro ao deletar perfil no Supabase:', e);
     }

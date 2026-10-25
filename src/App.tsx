@@ -79,8 +79,12 @@ export function App() {
       const savedMat = localStorage.getItem('ferias_pp_logged_matricula');
       if (savedMat) {
         const foundUser = validPerfis.find(p => p.matricula.toUpperCase() === savedMat.toUpperCase());
-        if (foundUser) {
+        if (foundUser && foundUser.situacao !== 'inativo') {
           setCurrentUser(foundUser);
+        } else {
+          // Servidor foi excluído ou inativado pela Direção: desloga imediatamente
+          localStorage.removeItem('ferias_pp_logged_matricula');
+          setCurrentUser(null);
         }
       }
     } catch (e: any) {
