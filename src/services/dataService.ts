@@ -323,7 +323,7 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
 
     if (res.error) {
       console.error('Erro crítico ao salvar perfil no Supabase:', res.error);
-      throw new Error(`Falha no Banco em Nuvem: ${res.error.message}`);
+      throw new Error(`Falha ao salvar perfil: ${res.error.message}`);
     }
 
     if ((res as any).data && (res as any).data.id) {
@@ -354,7 +354,7 @@ export async function deletePerfil(id: string, matricula?: string): Promise<bool
     const resMat = await supabase.from('perfis').delete().eq('matricula', mat);
     if (resMat.error) {
       console.error('Erro ao deletar perfil no Supabase:', resMat.error);
-      throw new Error(`Falha ao excluir no Banco em Nuvem: ${resMat.error.message}`);
+      throw new Error(`Falha ao excluir perfil: ${resMat.error.message}`);
     }
   }
 

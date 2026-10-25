@@ -92,12 +92,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
     }
 
     if (!targetUser) {
-      const apenasDiretorPadrao = perfis.length === 1 && perfis[0].matricula === '123456';
-      if (apenasDiretorPadrao) {
-        setErro(`Matrícula "${matriculaInput}" não encontrada. Apenas a conta da Direção (123456) está ativa no cache. Toque no botão abaixo para sincronizar com o banco em nuvem.`);
-      } else {
-        setErro(`Matrícula "${matriculaInput}" não cadastrada no sistema. O acesso é permitido somente para servidores previamente cadastrados pela Direção da Unidade.`);
-      }
+      setErro(`Matrícula "${matriculaInput}" não cadastrada no sistema. O acesso é permitido somente para servidores previamente cadastrados pela Direção da Unidade.`);
       return;
     }
 
@@ -223,64 +218,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
               )}
 
               {erro && (
-                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex flex-col gap-2 animate-fadeIn">
-                  <div className="flex items-start gap-2.5">
-                    <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-                    <span className="font-medium">{erro}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setVerificando(true);
-                      setErro(null);
-                      try {
-                        const atualizados = await getPerfis();
-                        let achou = atualizados.find(p => {
-                          const mat = p.matricula.trim().toUpperCase();
-                          return mat === termoMatricula || mat.replace(/[^A-Z0-9]/g, '') === termoMatricula.replace(/[^A-Z0-9]/g, '');
-                        });
-
-                        if (!achou) {
-                          const supabase = getSupabaseClient();
-                          if (supabase && termoMatricula) {
-                            const clean = termoMatricula.replace(/[^A-Z0-9]/g, '');
-                            let query = supabase.from('perfis').select('*');
-                            if (clean && clean !== termoMatricula) {
-                              query = query.or(`matricula.ilike.${termoMatricula},matricula.ilike.${clean}`);
-                            } else {
-                              query = query.ilike('matricula', termoMatricula);
-                            }
-                            const { data: dbData } = await query.limit(1).maybeSingle();
-                            if (dbData) {
-                              achou = {
-                                id: dbData.id,
-                                authUserId: dbData.auth_user_id,
-                                matricula: dbData.matricula,
-                                nomeCompleto: dbData.nome_completo,
-                                equipeId: normalizeEquipeId(dbData.equipe_id),
-                                papel: dbData.papel,
-                                situacao: dbData.situacao,
-                                email: dbData.email,
-                                telefone: dbData.telefone,
-                                senha: dbData.senha,
-                              };
-                            }
-                          }
-                        }
-
-                        if (achou) {
-                          onLoginSuccess(achou);
-                        } else {
-                          setErro(`Matrícula "${matriculaInput}" ainda não encontrada. Certifique-se de que foi cadastrada na Direção.`);
-                        }
-                      } finally {
-                        setVerificando(false);
-                      }
-                    }}
-                    className="self-end text-[11px] font-bold text-navy-950 underline hover:text-navy-800 pt-0.5 cursor-pointer"
-                  >
-                    🔄 Sincronizar com Banco em Nuvem
-                  </button>
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2.5 animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <span className="font-medium">{erro}</span>
                 </div>
               )}
 
