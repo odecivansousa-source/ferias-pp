@@ -40,7 +40,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
     }
 
     if (!servidorEncontrado) {
-      setErro(`Matrícula "${matriculaInput}" não cadastrada no sistema. O acesso é permitido somente para servidores previamente cadastrados pela Direção da Unidade.`);
+      // Se na base deste aparelho só existir o Diretor padrão (123456), orienta o usuário sobre o primeiro acesso
+      const apenasDiretorPadrao = perfis.length === 1 && perfis[0].matricula === '123456';
+      if (apenasDiretorPadrao) {
+        setErro(`Matrícula "${matriculaInput}" não encontrada neste aparelho. Se este é o primeiro acesso neste celular, entre com a matrícula inicial da Direção (123456 e senha 131220) para cadastrar os servidores, ou conecte o banco em nuvem.`);
+      } else {
+        setErro(`Matrícula "${matriculaInput}" não cadastrada no sistema. O acesso é permitido somente para servidores previamente cadastrados pela Direção da Unidade.`);
+      }
       return;
     }
 
@@ -52,7 +58,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
     // Se for o DIRETOR DA UNIDADE: validação obrigatória de senha exclusiva
     if (isDiretor) {
       if (!senhaInput.trim()) {
-        setErro('O Diretor da Unidade deve informar a senha de acesso.');
+        setErro('O Diretor da Unidade deve informar a senha de acesso (senha inicial: 131220).');
         return;
       }
 
@@ -105,8 +111,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                   <input
                     type="text"
                     required
-                    autoFocus
                     value={matriculaInput}
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    inputMode="text"
                     onChange={(e) => {
                       setMatriculaInput(e.target.value);
                       setErro(null);
@@ -133,12 +142,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                     <input
                       type={mostrarSenha ? 'text' : 'password'}
                       required
+                      autoFocus
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       value={senhaInput}
                       onChange={(e) => {
                         setSenhaInput(e.target.value);
                         setErro(null);
                       }}
-                      placeholder="Digite sua senha de acesso"
+                      placeholder="Digite sua senha de acesso (ex: 131220)"
                       className="w-full text-sm font-mono font-bold px-4 py-3.5 pr-12 bg-slate-50 border-2 border-gold-400 focus:border-navy-950 rounded-2xl outline-none text-navy-950 transition shadow-inner"
                     />
                     <button

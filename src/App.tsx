@@ -39,8 +39,9 @@ export function App() {
     try {
       const savedMat = localStorage.getItem('ferias_pp_logged_matricula');
       if (savedMat) {
-        const mock = generateMockPoliciais();
-        const found = mock.find(p => p.matricula.toUpperCase() === savedMat.toUpperCase());
+        const rawPerfis = localStorage.getItem('ferias_pp_perfis');
+        const list: Perfil[] = rawPerfis ? JSON.parse(rawPerfis) : generateMockPoliciais();
+        const found = list.find(p => p.matricula.toUpperCase() === savedMat.toUpperCase());
         if (found) return found;
       }
     } catch(e) {}
