@@ -60,61 +60,69 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
       {/* Faixa Superior Institucional */}
-      <div className="bg-navy-950 text-white text-[11px] px-4 py-1.5 flex items-center justify-between border-b border-navy-900">
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-gold-400"></span>
-          <span className="font-semibold tracking-wide text-slate-300">UNIDADE PRISIONAL — PLANEJAMENTO E CONTROLE DE FÉRIAS</span>
+      <div className="bg-navy-950 text-white text-[11px] px-3 sm:px-4 py-1.5 flex items-center justify-between border-b border-navy-900 gap-2">
+        <div className="flex items-center gap-2 truncate">
+          <span className="inline-block w-2 h-2 rounded-full bg-gold-400 flex-shrink-0"></span>
+          <span className="font-semibold tracking-wide text-slate-300 truncate">
+            UNIDADE PRISIONAL — FÉRIAS PP
+          </span>
         </div>
 
-        <div className="text-[10px] text-slate-400 font-medium hidden sm:block">
-          SISTEMA INTERNO
+        <div className="text-[10px] text-gold-400 font-bold flex items-center gap-1 flex-shrink-0">
+          <span className="text-slate-400 hidden xs:inline">Conectado:</span>
+          <span className="bg-navy-900 px-2 py-0.5 rounded border border-navy-800 text-slate-200 truncate max-w-[150px] sm:max-w-none">
+            {currentUser.nomeCompleto}
+          </span>
         </div>
       </div>
 
       {/* Barra Principal */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 gap-2">
           {/* Identidade Visual */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('calendario')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-navy-900 to-navy-950 flex items-center justify-center text-gold-400 shadow-md border border-navy-800">
-              <span className="font-black text-xl tracking-tighter">PP</span>
+          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer flex-shrink-0" onClick={() => setActiveTab('calendario')}>
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-navy-900 to-navy-950 flex items-center justify-center text-gold-400 shadow-md border border-navy-800 flex-shrink-0">
+              <span className="font-black text-lg sm:text-xl tracking-tighter">PP</span>
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-black text-lg text-navy-950 tracking-tight leading-tight">FÉRIAS PP</h1>
-                <span className="bg-gold-100 text-gold-800 font-extrabold text-[10px] px-1.5 py-0.5 rounded border border-gold-200">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="font-black text-base sm:text-lg text-navy-950 tracking-tight leading-tight">FÉRIAS PP</h1>
+                <span className="bg-gold-100 text-gold-800 font-extrabold text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded border border-gold-200">
                   UNIDADE
                 </span>
               </div>
-              <p className="text-[11px] font-medium text-slate-500 leading-none">Sistema de Planejamento de Férias</p>
+              <p className="text-[11px] font-medium text-slate-500 leading-none hidden sm:block">
+                Sistema de Planejamento de Férias
+              </p>
             </div>
           </div>
 
           {/* Seletor de Perfil / Usuário Atual e Botão Sair */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="relative group">
-              <div className="flex items-center gap-2.5 bg-slate-100/80 hover:bg-slate-200/80 px-3 py-1.5 rounded-xl border border-slate-200 cursor-pointer transition">
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shadow-sm ${
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="relative group min-w-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 bg-slate-100/90 hover:bg-slate-200/80 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 cursor-pointer transition min-w-0">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shadow-sm flex-shrink-0 ${
                   (currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin')
                     ? 'bg-navy-950 text-gold-400 border border-gold-500/40' 
                     : 'bg-emerald-600 text-white'
                 }`}>
                   {(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') ? '🎖️' : 'P'}
                 </div>
-                <div className="text-left hidden sm:block">
-                  <div className="text-xs font-bold text-navy-950 truncate max-w-[170px] leading-tight">
+                {/* Nome e Matrícula exibidos no Celular e no Computador */}
+                <div className="text-left min-w-0">
+                  <div className="text-xs font-black text-navy-950 truncate max-w-[120px] xs:max-w-[160px] sm:max-w-[220px] leading-tight">
                     {currentUser.nomeCompleto}
                   </div>
-                  <div className="text-[10px] text-slate-500 font-medium capitalize flex items-center gap-1">
-                    <span className={(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') ? 'font-bold text-navy-900' : 'text-slate-600'}>
-                      {(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') ? 'Diretor da Unidade' : 'Policial Penal'}
+                  <div className="text-[9px] sm:text-[10px] text-slate-500 font-medium capitalize flex items-center gap-1 leading-tight">
+                    <span className={(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') ? 'font-bold text-navy-900' : 'text-slate-600 truncate max-w-[70px] sm:max-w-none'}>
+                      {(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') ? 'Diretor' : 'Policial'}
                     </span>
                     <span>•</span>
-                    <span className="font-mono text-[9px]">{currentUser.matricula}</span>
+                    <span className="font-mono text-[9px] font-bold text-slate-700">{currentUser.matricula}</span>
                   </div>
                 </div>
                 {(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') && (
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                 )}
               </div>
 
