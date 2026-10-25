@@ -71,17 +71,22 @@ export function App() {
       const validPerfis = Array.isArray(perfs) && perfs.length > 0 ? perfs : generateMockPoliciais();
       const validEquipes = Array.isArray(eqs) && eqs.length > 0 ? eqs : MOCK_EQUIPES;
 
-      setEquipes(validEquipes);
-      setPerfis(validPerfis);
-      setConfig(cfg || MOCK_CONFIGURACAO);
-      setSolicitacoes(Array.isArray(sols) ? sols : []);
-      setHistorico(Array.isArray(hist) ? hist : []);
+      setEquipes(prev => JSON.stringify(prev) === JSON.stringify(validEquipes) ? prev : validEquipes);
+      setPerfis(prev => JSON.stringify(prev) === JSON.stringify(validPerfis) ? prev : validPerfis);
+      setConfig(prev => JSON.stringify(prev) === JSON.stringify(cfg || MOCK_CONFIGURACAO) ? prev : (cfg || MOCK_CONFIGURACAO));
+      setSolicitacoes(prev => JSON.stringify(prev) === JSON.stringify(sols) ? prev : (Array.isArray(sols) ? sols : []));
+      setHistorico(prev => JSON.stringify(prev) === JSON.stringify(hist) ? prev : (Array.isArray(hist) ? hist : []));
 
       const savedMat = localStorage.getItem('ferias_pp_logged_matricula');
       if (savedMat) {
         const foundUser = validPerfis.find(p => p.matricula.toUpperCase() === savedMat.toUpperCase());
         if (foundUser && foundUser.situacao !== 'inativo') {
-          setCurrentUser(foundUser);
+          setCurrentUser(prev => {
+            if (prev && prev.id === foundUser.id && prev.nomeCompleto === foundUser.nomeCompleto && prev.matricula === foundUser.matricula && prev.papel === foundUser.papel && prev.situacao === foundUser.situacao && prev.equipeId === foundUser.equipeId) {
+              return prev;
+            }
+            return foundUser;
+          });
         } else {
           // Servidor foi excluído ou inativado pela Direção: desloga imediatamente
           localStorage.removeItem('ferias_pp_logged_matricula');

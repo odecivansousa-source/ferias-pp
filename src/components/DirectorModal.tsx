@@ -24,9 +24,10 @@ export const DirectorModal: React.FC<DirectorModalProps> = ({
   const [salvando, setSalvando] = useState(false);
   const [mensagem, setMensagem] = useState<{ tipo: 'ok' | 'erro'; texto: string } | null>(null);
 
-  // Sincroniza campos quando abrir
+  // Sincroniza campos APENAS quando o modal é aberto (impede sobrescrever digitação pelo polling em tempo real)
+  const prevOpenRef = React.useRef(false);
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !prevOpenRef.current) {
       setNomeCompleto(diretorPerfil?.nomeCompleto || 'Diretor da Unidade');
       setMatricula(diretorPerfil?.matricula || '123456');
       setNovaSenha('');
@@ -34,7 +35,8 @@ export const DirectorModal: React.FC<DirectorModalProps> = ({
       setMostrarSenha(false);
       setMensagem(null);
     }
-  }, [isOpen, diretorPerfil]);
+    prevOpenRef.current = isOpen;
+  }, [isOpen, diretorPerfil?.id]);
 
   if (!isOpen) return null;
 
