@@ -66,20 +66,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="font-semibold tracking-wide text-slate-300">UNIDADE PRISIONAL — PLANEJAMENTO E CONTROLE DE FÉRIAS</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Status do Banco / Supabase */}
-          <button
-            onClick={onOpenSupabaseModal}
-            className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition ${
-              isConnected
-                ? 'bg-emerald-950 text-emerald-300 border border-emerald-700 hover:bg-emerald-900'
-                : 'bg-amber-950/80 text-gold-300 border border-gold-700/60 hover:bg-amber-900'
-            }`}
-            title="Clique para configurar o banco de dados Supabase"
-          >
-            <Database className="w-3 h-3" />
-            <span>{isConnected ? 'Supabase Nuvem Ativo' : '⚡ Modo Demo Local (120 Policiais)'}</span>
-          </button>
+        <div className="text-[10px] text-slate-400 font-medium hidden sm:block">
+          SISTEMA INTERNO
         </div>
       </div>
 

@@ -87,7 +87,7 @@ export const RulesHelpTab: React.FC<RulesHelpTabProps> = ({ config }) => {
         <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm space-y-4">
           <h3 className="text-base font-black text-navy-950 flex items-center gap-2 border-b border-slate-100 pb-3">
             <Smartphone className="w-5 h-5 text-gold-600" />
-            4. Como Instalar no Celular (Custo Zero)
+            4. Como Instalar no Celular (Aplicativo Direto)
           </h3>
           <div className="space-y-3 text-xs text-slate-700 leading-relaxed">
             <p>

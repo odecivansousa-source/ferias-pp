@@ -11,10 +11,11 @@ import {
   AlertTriangle,
   RotateCcw,
   Save,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { Perfil, Equipe, ConfiguracaoFerias, PapelUsuario, SituacaoFuncional } from '../types';
-import { savePerfil, updateEquipe, updateConfiguracao, resetDemoData } from '../services/dataService';
+import { savePerfil, deletePerfil, updateEquipe, updateConfiguracao, resetDemoData } from '../services/dataService';
 
 interface AdminPanelProps {
   perfis: Perfil[];
@@ -75,6 +76,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setModalPerfil({ ...p });
     setIsEditing(true);
     setFeedback(null);
+  };
+
+  const handleOpenDirectorModal = () => {
+    const diretor = perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin');
+    if (diretor) {
+      setModalPerfil({ ...diretor });
+      setIsEditing(true);
+    } else {
+      setModalPerfil({
+        id: 'usr-diretor',
+        nomeCompleto: '',
+        matricula: '123456',
+        equipeId: equipes[0]?.id || '',
+        papel: 'diretor',
+        situacao: 'ativo',
+        email: '',
+        telefone: '',
+      });
+      setIsEditing(false);
+    }
+    setFeedback(null);
+  };
+
+  const handleDeletePerfil = async (p: Perfil) => {
+    if (p.papel === 'diretor') {
+      const diretoresCount = perfis.filter(x => x.papel === 'diretor').length;
+      if (diretoresCount <= 1) {
+        alert('Não é possível excluir o único Diretor da Unidade. Você pode alterar seu nome e matrícula no botão "Dados do Diretor" ou "Editar".');
+        return;
+      }
+    }
+
+    const confirmar = confirm(`Deseja realmente EXCLUIR o cadastro:\n\nNome: ${p.nomeCompleto}\nMatrícula: ${p.matricula}\n\nEssa exclusão removerá o policial do quadro.`);
+    if (!confirmar) return;
+
+    try {
+      await deletePerfil(p.id);
+      onDataUpdated();
+    } catch (err: any) {
+      alert(`Erro ao excluir: ${err.message}`);
+    }
   };
 
   const handleSavePerfil = async (e: React.FormEvent) => {
@@ -238,10 +280,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <button
                 type="button"
                 onClick={handleOpenAddModal}
-                className="text-xs font-black text-white bg-navy-900 hover:bg-navy-800 px-4 py-2 rounded-2xl shadow-sm transition flex items-center gap-1.5"
+                className="text-xs font-black text-white bg-navy-900 hover:bg-navy-800 px-3.5 py-2 rounded-2xl shadow-sm transition flex items-center gap-1.5 whitespace-nowrap"
               >
                 <UserPlus className="w-3.5 h-3.5 text-gold-400" />
                 Cadastrar Policial
+              </button>
+
+              <button
+                type="button"
+                onClick={handleOpenDirectorModal}
+                className="text-xs font-black text-navy-950 bg-gold-400 hover:bg-gold-300 px-3.5 py-2 rounded-2xl shadow-sm transition flex items-center gap-1.5 whitespace-nowrap"
+                title="Cadastrar ou alterar nome e matrícula do Diretor da Unidade"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                Cadastrar / Alterar Diretor
               </button>
             </div>
           </div>
@@ -284,13 +336,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditModal(p)}
-                          className="text-xs text-navy-700 hover:text-navy-950 font-bold hover:underline"
-                        >
-                          Editar
-                        </button>
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(p)}
+                            className="text-xs text-navy-700 hover:text-navy-950 font-bold hover:underline"
+                          >
+                            Editar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePerfil(p)}
+                            className="text-xs text-rose-600 hover:text-rose-800 font-bold hover:underline flex items-center gap-1"
+                            title="Excluir este policial do quadro"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                            <span>Excluir</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -478,7 +542,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden">
             <div className="bg-navy-900 text-white px-6 py-4 flex items-center justify-between">
               <h3 className="font-bold text-base">
-                {isEditing ? 'Editar Policial Penal' : 'Cadastrar Novo Policial'}
+                {modalPerfil.papel === 'diretor'
+                  ? (isEditing ? 'Dados do Diretor da Unidade' : 'Cadastrar Diretor da Unidade')
+                  : (isEditing ? 'Editar Policial Penal' : 'Cadastrar Novo Policial Penal')}
               </h3>
               <button onClick={() => setModalPerfil(null)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
@@ -493,25 +559,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               )}
 
               <div>
-                <label className="block text-xs font-bold text-navy-950 mb-1">Nome Completo *</label>
+                <label className="block text-xs font-bold text-navy-950 mb-1">
+                  {modalPerfil.papel === 'diretor' ? 'Nome do Diretor da Unidade *' : 'Nome Completo do Policial *'}
+                </label>
                 <input
                   type="text"
                   required
                   value={modalPerfil.nomeCompleto || ''}
                   onChange={(e) => setModalPerfil({ ...modalPerfil, nomeCompleto: e.target.value })}
-                  placeholder="Ex: Carlos Eduardo da Silva"
+                  placeholder={modalPerfil.papel === 'diretor' ? 'Ex: Dr. Roberto Ramos' : 'Ex: Carlos Eduardo da Silva'}
                   className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-navy-800"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-navy-950 mb-1">Matrícula Funcional *</label>
+                <label className="block text-xs font-bold text-navy-950 mb-1">
+                  {modalPerfil.papel === 'diretor' ? 'Matrícula do Diretor (Pode alterar a 123456) *' : 'Matrícula Funcional do Policial *'}
+                </label>
                 <input
                   type="text"
                   required
                   value={modalPerfil.matricula || ''}
                   onChange={(e) => setModalPerfil({ ...modalPerfil, matricula: e.target.value })}
-                  placeholder="Ex: PP-2026-121"
+                  placeholder={modalPerfil.papel === 'diretor' ? 'Ex: 123456 ou matrícula oficial' : 'Ex: 1001 ou PP-001'}
                   className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold outline-none focus:ring-2 focus:ring-navy-800"
                 />
               </div>

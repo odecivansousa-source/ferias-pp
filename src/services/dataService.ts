@@ -282,6 +282,23 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
   return perfil;
 }
 
+export async function deletePerfil(id: string): Promise<boolean> {
+  const perfis = await getPerfis();
+  const filtered = perfis.filter(p => p.id !== id);
+  localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(filtered));
+
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConnected()) {
+    try {
+      await supabase.from('perfis').delete().eq('id', id);
+    } catch (e) {
+      console.warn('Erro ao deletar perfil no Supabase:', e);
+    }
+  }
+
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // SOLICITAÇÕES DE FÉRIAS
 // -----------------------------------------------------------------------------

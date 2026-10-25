@@ -230,7 +230,7 @@ export function App() {
       </main>
 
       {/* Rodapé Institucional */}
-      <footer className="bg-white border-t border-slate-200 mt-auto py-6 text-xs text-slate-500">
+      <footer className="bg-white border-t border-slate-200 mt-auto py-5 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-navy-950 flex items-center justify-center text-gold-400 font-bold text-xs">
@@ -238,20 +238,12 @@ export function App() {
             </div>
             <div>
               <p className="font-bold text-navy-950">FÉRIAS PP — Sistema de Planejamento de Férias</p>
-              <p className="text-[11px] text-slate-400">Unidade Prisional | Controle Interno e Relatórios para a SAP</p>
+              <p className="text-[11px] text-slate-400">Unidade Prisional | Controle Interno de Escala e Relatórios</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-4 text-[11px]">
-            <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200">
-              Custo Zero: React + Supabase + GitHub Pages
-            </span>
-            <button
-              onClick={() => setSupabaseModalOpen(true)}
-              className="text-navy-700 hover:text-navy-950 font-bold hover:underline"
-            >
-              Conexão com Banco de Dados
-            </button>
+          <div className="text-[11px] text-slate-400">
+            Ambiente Interno da Unidade Prisional
           </div>
         </div>
       </footer>
