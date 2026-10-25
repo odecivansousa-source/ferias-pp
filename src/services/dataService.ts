@@ -19,11 +19,25 @@ const STORAGE_KEYS = {
   ACTIVE_USER: 'ferias_pp_active_user_id',
 };
 
+export const EQUIPE_ID_MAP: Record<string, string> = {
+  'eq-1': '11111111-1111-1111-1111-111111111111',
+  'eq-2': '22222222-2222-2222-2222-222222222222',
+  'eq-3': '33333333-3333-3333-3333-333333333333',
+  'eq-4': '44444444-4444-4444-4444-444444444444',
+};
+
+export function normalizeEquipeId(id?: string): string {
+  if (!id) return '11111111-1111-1111-1111-111111111111';
+  if (EQUIPE_ID_MAP[id]) return EQUIPE_ID_MAP[id];
+  if (id.length === 36 && id.includes('-')) return id;
+  return '11111111-1111-1111-1111-111111111111';
+}
+
 export const DEFAULT_FALLBACK_USER: Perfil = {
   id: 'usr-diretor',
   matricula: '123456',
   nomeCompleto: 'Diretor da Unidade',
-  equipeId: 'eq-1',
+  equipeId: '11111111-1111-1111-1111-111111111111',
   papel: 'diretor',
   situacao: 'ativo',
   email: 'diretoria@unidade.local',
@@ -297,36 +311,46 @@ export async function getPerfis(): Promise<Perfil[]> {
 }
 
 export async function savePerfil(perfil: Perfil): Promise<Perfil> {
+  const normalizedEquipeId = normalizeEquipeId(perfil.equipeId);
+  const perfilNormalized = {
+    ...perfil,
+    equipeId: normalizedEquipeId,
+  };
+
   const perfis = await getPerfis();
-  const idx = perfis.findIndex(p => p.id === perfil.id || p.matricula === perfil.matricula);
+  const idx = perfis.findIndex(p => p.id === perfilNormalized.id || p.matricula === perfilNormalized.matricula);
   if (idx >= 0) {
-    perfis[idx] = perfil;
+    perfis[idx] = perfilNormalized;
   } else {
-    perfis.push(perfil);
+    perfis.push(perfilNormalized);
   }
   localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(perfis));
 
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
     try {
-      await supabase.from('perfis').upsert({
-        id: perfil.id.startsWith('pol-') || perfil.id.startsWith('usr-') ? undefined : perfil.id,
-        matricula: perfil.matricula,
-        nome_completo: perfil.nomeCompleto,
-        equipe_id: perfil.equipeId,
-        papel: perfil.papel,
-        situacao: perfil.situacao,
-        email: perfil.email,
-        telefone: perfil.telefone,
-        senha: perfil.senha,
+      const res = await supabase.from('perfis').upsert({
+        id: perfilNormalized.id.startsWith('pol-') || perfilNormalized.id.startsWith('usr-') ? undefined : perfilNormalized.id,
+        matricula: perfilNormalized.matricula,
+        nome_completo: perfilNormalized.nomeCompleto,
+        equipe_id: normalizedEquipeId,
+        papel: perfilNormalized.papel,
+        situacao: perfilNormalized.situacao,
+        email: perfilNormalized.email,
+        telefone: perfilNormalized.telefone,
+        senha: perfilNormalized.senha,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'matricula' });
+
+      if (res.error) {
+        console.warn('Erro ao persistir perfil no Supabase:', res.error);
+      }
     } catch (e) {
       console.warn('Erro ao persistir perfil no Supabase:', e);
     }
   }
 
-  return perfil;
+  return perfilNormalized;
 }
 
 export async function deletePerfil(id: string): Promise<boolean> {

@@ -2,7 +2,7 @@ import { Equipe, Perfil, SolicitacaoFerias, ConfiguracaoFerias, HistoricoAuditor
 
 export const MOCK_EQUIPES: Equipe[] = [
   {
-    id: 'eq-1',
+    id: '11111111-1111-1111-1111-111111111111',
     nome: 'Equipe 1 (Plantão Alfa)',
     codigo: 'EQ-01',
     limiteAfastamentosSimultaneos: 3,
@@ -10,7 +10,7 @@ export const MOCK_EQUIPES: Equipe[] = [
     ativa: true,
   },
   {
-    id: 'eq-2',
+    id: '22222222-2222-2222-2222-222222222222',
     nome: 'Equipe 2 (Plantão Bravo)',
     codigo: 'EQ-02',
     limiteAfastamentosSimultaneos: 3,
@@ -18,7 +18,7 @@ export const MOCK_EQUIPES: Equipe[] = [
     ativa: true,
   },
   {
-    id: 'eq-3',
+    id: '33333333-3333-3333-3333-333333333333',
     nome: 'Equipe 3 (Plantão Charlie)',
     codigo: 'EQ-03',
     limiteAfastamentosSimultaneos: 3,
@@ -26,7 +26,7 @@ export const MOCK_EQUIPES: Equipe[] = [
     ativa: true,
   },
   {
-    id: 'eq-4',
+    id: '44444444-4444-4444-4444-444444444444',
     nome: 'Equipe 4 (Plantão Delta)',
     codigo: 'EQ-04',
     limiteAfastamentosSimultaneos: 3,
@@ -51,7 +51,7 @@ export const INITIAL_DIRECTOR_PROFILE: Perfil = {
   id: 'usr-diretor',
   matricula: '123456',
   nomeCompleto: 'Diretor da Unidade',
-  equipeId: 'eq-1',
+  equipeId: '11111111-1111-1111-1111-111111111111',
   papel: 'diretor',
   situacao: 'ativo',
   email: 'diretoria@unidade.local',
