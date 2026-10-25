@@ -60,11 +60,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between selection:bg-navy-900 selection:text-gold-300">
       {/* Topo Institucional */}
-      <div className="bg-navy-950 text-white text-[11px] px-4 py-2 flex items-center justify-center sm:justify-between border-b border-navy-900">
-        <span className="font-semibold tracking-wide text-slate-300 text-center">
-          ESTADO DE SÃO PAULO — SECRETARIA DA ADMINISTRAÇÃO PENITENCIÁRIA (SAP)
+      <div className="bg-navy-950 text-white text-[11px] px-4 py-2 flex items-center justify-between border-b border-navy-900">
+        <span className="font-semibold tracking-wide text-slate-300">
+          UNIDADE PRISIONAL — CONTROLE DE EFETIVO
         </span>
-        <span className="hidden sm:inline text-gold-400 font-bold">Unidade Prisional</span>
+        <span className="text-gold-400 font-bold">FÉRIAS PP</span>
       </div>
 
       {/* Card Central de Login */}
@@ -80,7 +80,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
               Sistema de Planejamento e Controle de Férias
             </p>
             <div className="mt-3 inline-block bg-gold-500/20 text-gold-300 border border-gold-500/30 text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
-              Acesso da Unidade: Policial Penal & Direção
+              Policial Penal & Diretor da Unidade
             </div>
           </div>
 
@@ -127,32 +127,26 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
               </button>
             </form>
 
-            {/* Apenas 2 Acessos na Unidade: Policial Penal e Diretor */}
+            {/* Apenas 2 Acessos na Unidade: POLICIAL PENAL e DIRETOR DA UNIDADE */}
             <div className="pt-4 border-t border-slate-100 space-y-2.5">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block text-center">
-                Atalhos Rápidos de Acesso (Clique para entrar):
+                Atalhos Rápidos de Acesso:
               </span>
               <div className="grid grid-cols-2 gap-3 text-center text-xs">
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('PP-2026-001')}
-                  className="p-3 rounded-2xl border-2 border-emerald-100 bg-emerald-50/50 hover:bg-emerald-100/60 text-slate-700 transition flex flex-col items-center justify-center gap-1 text-center group"
-                  title="Entra como Policial Penal (Equipe 1)"
+                  className="py-3.5 px-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-950 font-black text-xs transition flex items-center justify-center gap-2 group shadow-sm active:scale-95"
                 >
-                  <span className="block font-black text-xs text-emerald-900 group-hover:scale-105 transition">👮 Policial Penal</span>
-                  <span className="text-[10px] font-mono font-bold text-emerald-700">PP-2026-001</span>
-                  <span className="text-[9px] text-slate-500">Minhas Férias & Calendário</span>
+                  <span className="group-hover:scale-105 transition tracking-wide">POLICIAL PENAL</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleQuickLogin('DIR-01')}
-                  className="p-3 rounded-2xl border-2 border-navy-200 bg-navy-50/70 hover:bg-navy-100 text-navy-950 transition flex flex-col items-center justify-center gap-1 text-center group"
-                  title="Entra como Diretor da Unidade com comando total"
+                  className="py-3.5 px-3 rounded-2xl border-2 border-navy-200 bg-navy-50/80 hover:bg-navy-100 text-navy-950 font-black text-xs transition flex items-center justify-center gap-2 group shadow-sm active:scale-95"
                 >
-                  <span className="block font-black text-xs text-navy-950 group-hover:scale-105 transition">🎖️ Diretor da Unidade</span>
-                  <span className="text-[10px] font-mono font-bold text-navy-800">DIR-01</span>
-                  <span className="text-[9px] font-bold text-gold-700">Acesso Total a Todos Comandos</span>
+                  <span className="group-hover:scale-105 transition tracking-wide">DIRETOR DA UNIDADE</span>
                 </button>
               </div>
             </div>
@@ -162,7 +156,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
 
       {/* Rodapé */}
       <footer className="py-4 text-center text-xs text-slate-400 border-t border-slate-200/60 bg-white">
-        FÉRIAS PP — Sistema de Planejamento de Férias | Secretaria da Administração Penitenciária — SAP
+        FÉRIAS PP — Sistema de Planejamento e Controle de Férias da Unidade Prisional
       </footer>
     </div>
   );

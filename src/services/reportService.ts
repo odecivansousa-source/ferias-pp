@@ -108,7 +108,7 @@ export function exportarRelatorioCSV(params: ParametrosRelatorio): void {
 }
 
 /**
- * Gera e baixa o arquivo PDF Oficial formatado para a Secretaria de Administração Penitenciária (SAP)
+ * Gera e baixa o arquivo PDF Oficial formatado para a Unidade Prisional (SAP)
  */
 export function exportarRelatorioPDF(params: ParametrosRelatorio): void {
   const { tipo, anoExercicio, equipeId, solicitacoes, equipes } = params;
@@ -162,7 +162,7 @@ export function exportarRelatorioPDF(params: ParametrosRelatorio): void {
   doc.setTextColor(245, 158, 11); // gold-500
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('SECRETARIA DA ADMINISTRAÇÃO PENITENCIÁRIA — SAP', 14, 10);
+  doc.text('PLANO ANUAL DE FÉRIAS — UNIDADE PRISIONAL', 14, 10);
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);

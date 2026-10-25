@@ -63,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="bg-navy-950 text-white text-[11px] px-4 py-1.5 flex items-center justify-between border-b border-navy-900">
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-gold-400"></span>
-          <span className="font-semibold tracking-wide text-slate-300">ESTADO DE SÃO PAULO — SECRETARIA DA ADMINISTRAÇÃO PENITENCIÁRIA</span>
+          <span className="font-semibold tracking-wide text-slate-300">UNIDADE PRISIONAL — PLANEJAMENTO E CONTROLE DE FÉRIAS</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -119,7 +119,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
                   <div className="text-[10px] text-slate-500 font-medium capitalize flex items-center gap-1">
                     <span className={(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') ? 'font-bold text-navy-900' : 'text-slate-600'}>
-                      {(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') ? 'Diretor (Acesso Total)' : 'Policial Penal'}
+                      {(currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') ? 'Diretor da Unidade' : 'Policial Penal'}
                     </span>
                     <span>•</span>
                     <span className="font-mono text-[9px]">{currentUser.matricula}</span>
@@ -139,7 +139,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </div>
 
                   <div className="p-1 space-y-0.5 max-h-80 overflow-y-auto">
-                    <div className="px-2 pt-1 text-[10px] font-bold text-navy-900">🎖️ Direção da Unidade (Acesso Total)</div>
+                    <div className="px-2 pt-1 text-[10px] font-bold text-navy-900">🎖️ Diretor da Unidade</div>
                     {diretores.map(dir => (
                       <button
                         key={dir.id}

@@ -97,7 +97,7 @@ export const SapReportsTab: React.FC<SapReportsTabProps> = ({
       <div className="bg-gradient-to-r from-navy-950 to-navy-900 text-white rounded-3xl p-6 sm:p-8 border border-navy-800 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 bg-gold-500/20 text-gold-400 border border-gold-500/30 px-3 py-1 rounded-full text-xs font-bold mb-3">
-            <span>SECRETARIA DA ADMINISTRAÇÃO PENITENCIÁRIA</span>
+            <span>UNIDADE PRISIONAL</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
             Relatórios Oficiais para a SAP

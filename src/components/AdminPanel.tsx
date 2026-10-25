@@ -269,7 +269,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             ? 'bg-navy-900 text-gold-400 font-black' 
                             : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                         }`}>
-                          {(p.papel === 'diretor' || (p.papel as string) === 'admin') ? 'Diretor (Acesso Total)' : 'Policial Penal'}
+                          {(p.papel === 'diretor' || (p.papel as string) === 'admin') ? 'Diretor da Unidade' : 'Policial Penal'}
                         </span>
                       </td>
                       <td className="py-3 px-3">
@@ -525,7 +525,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold outline-none"
                   >
                     <option value="policial">Policial Penal</option>
-                    <option value="diretor">Diretor da Unidade (Acesso Total)</option>
+                    <option value="diretor">Diretor da Unidade</option>
                   </select>
                 </div>
               </div>
