@@ -54,7 +54,7 @@ export const RulesHelpTab: React.FC<RulesHelpTabProps> = ({ config }) => {
           </h3>
           <div className="space-y-3 text-xs text-slate-700 leading-relaxed">
             <p>
-              Para assegurar a segurança contínua da unidade prisional, o sistema aplica limites estritos de afastamentos simultâneos configurados para cada plantão (Equipes 1, 2, 3 e 4).
+              Para assegurar a segurança contínua da unidade prisional, o sistema aplica limites estritos de afastamentos simultâneos configurados para cada plantão (Equipes Alfa, Bravo, Charle e Delta).
             </p>
             <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs space-y-1">
               <span className="font-bold flex items-center gap-1.5 text-amber-900">

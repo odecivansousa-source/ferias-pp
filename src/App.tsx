@@ -135,6 +135,10 @@ export function App() {
             console.log('⚡ [TEMPO REAL] Períodos atualizados no Supabase');
             loadData();
           })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'equipes' }, () => {
+            console.log('⚡ [TEMPO REAL] Equipes atualizadas no Supabase');
+            loadData();
+          })
           .subscribe();
       } catch (err) {
         console.warn('Erro ao conectar realtime:', err);

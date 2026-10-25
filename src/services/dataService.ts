@@ -73,10 +73,9 @@ function initLocalStorageMock() {
   } catch (e) {}
 
   try {
-    const rawEquipes = localStorage.getItem(STORAGE_KEYS.EQUIPES);
-    const parsedEquipes = rawEquipes ? JSON.parse(rawEquipes) : null;
-    if (!Array.isArray(parsedEquipes) || parsedEquipes.length === 0) {
+    if (localStorage.getItem('ferias_pp_equipes_v3') !== 'true') {
       localStorage.setItem(STORAGE_KEYS.EQUIPES, JSON.stringify(MOCK_EQUIPES));
+      localStorage.setItem('ferias_pp_equipes_v3', 'true');
     }
   } catch (e) {
     localStorage.setItem(STORAGE_KEYS.EQUIPES, JSON.stringify(MOCK_EQUIPES));
@@ -143,7 +142,7 @@ export async function getEquipes(): Promise<Equipe[]> {
       const { data, error } = await supabase.from('equipes').select('*').order('codigo');
       if (error) throw error;
       if (data && data.length > 0) {
-        return data.map(d => ({
+        const mapped = data.map(d => ({
           id: d.id,
           nome: d.nome,
           codigo: d.codigo,
@@ -151,6 +150,10 @@ export async function getEquipes(): Promise<Equipe[]> {
           efetivoMinimoRequerido: d.efetivo_minimo_requerido,
           ativa: d.ativa,
         }));
+        try {
+          localStorage.setItem(STORAGE_KEYS.EQUIPES, JSON.stringify(mapped));
+        } catch (e) {}
+        return mapped;
       }
     } catch (e) {
       console.warn('Erro ao carregar equipes do Supabase, usando armazenamento local:', e);
