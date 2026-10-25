@@ -76,10 +76,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleOpenEditModal = (p: Perfil) => {
-    if (p.papel === 'diretor' || (p.papel as string) === 'admin') {
-      setModalDiretorOpen(true);
-      return;
-    }
     setModalPerfil({ ...p });
     setIsEditing(true);
     setFeedback(null);
@@ -115,8 +111,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     setSalvando(true);
     try {
+      let targetId = modalPerfil.id;
+      if (!targetId || targetId.startsWith('pol-') || targetId.startsWith('usr-')) {
+        if (modalPerfil.papel === 'diretor') {
+          const dirExistente = perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin');
+          if (dirExistente) targetId = dirExistente.id;
+        }
+      }
+
       const perfilToSave: Perfil = {
-        id: modalPerfil.id || 'pol-' + Date.now(),
+        id: targetId || (modalPerfil.papel === 'diretor' ? '00000000-0000-0000-0000-000000000001' : 'pol-' + Date.now()),
         nomeCompleto: modalPerfil.nomeCompleto.trim(),
         matricula: modalPerfil.matricula.trim().toUpperCase(),
         equipeId: modalPerfil.equipeId || equipes[0]?.id,
@@ -124,12 +128,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         situacao: (modalPerfil.situacao as SituacaoFuncional) || 'ativo',
         email: modalPerfil.email,
         telefone: modalPerfil.telefone,
+        senha: modalPerfil.senha?.trim() || undefined,
       };
 
-      await savePerfil(perfilToSave);
+      const saved = await savePerfil(perfilToSave);
       // Se a matrícula do diretor for alterada, atualiza a sessão local do navegador
-      if (modalPerfil.id === 'usr-diretor' || modalPerfil.id === '00000000-0000-0000-0000-000000000001' || modalPerfil.papel === 'diretor') {
-        localStorage.setItem('ferias_pp_logged_matricula', perfilToSave.matricula);
+      if (saved.papel === 'diretor') {
+        localStorage.setItem('ferias_pp_logged_matricula', saved.matricula);
       }
       setFeedback('Perfil salvo com sucesso!');
       setTimeout(() => {
@@ -614,6 +619,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <option value="inativo">Inativo / Afastado</option>
                 </select>
               </div>
+
+              {modalPerfil.papel === 'diretor' && (
+                <div>
+                  <label className="block text-xs font-bold text-navy-950 mb-1">
+                    Senha de Acesso do Diretor (Opcional - padrão: 131220)
+                  </label>
+                  <input
+                    type="text"
+                    value={modalPerfil.senha || ''}
+                    onChange={(e) => setModalPerfil({ ...modalPerfil, senha: e.target.value })}
+                    placeholder="Deixe em branco para manter a senha atual"
+                    className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold outline-none focus:ring-2 focus:ring-navy-800"
+                  />
+                </div>
+              )}
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                 <button

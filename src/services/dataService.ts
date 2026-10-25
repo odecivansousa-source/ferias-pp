@@ -301,7 +301,7 @@ export async function getPerfis(): Promise<Perfil[]> {
 
 export async function savePerfil(perfil: Perfil): Promise<Perfil> {
   const normalizedEquipeId = normalizeEquipeId(perfil.equipeId);
-  const perfilNormalized = {
+  const perfilNormalized: Perfil = {
     ...perfil,
     matricula: perfil.matricula.trim().toUpperCase(),
     nomeCompleto: perfil.nomeCompleto.trim(),
@@ -310,33 +310,94 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
 
   const supabase = getSupabaseClient();
   if (supabase) {
-    const isNew = !perfilNormalized.id || perfilNormalized.id.startsWith('pol-') || perfilNormalized.id.startsWith('usr-');
-    const res = await supabase.from('perfis').upsert({
-      id: isNew ? undefined : perfilNormalized.id,
-      matricula: perfilNormalized.matricula,
+    const isDirector = perfilNormalized.papel === 'diretor' || (perfilNormalized.papel as string) === 'admin';
+    const mat = perfilNormalized.matricula;
+    const isUuid = !!(perfilNormalized.id && perfilNormalized.id.length === 36 && perfilNormalized.id.includes('-'));
+
+    // 1. Procurar registro existente no Supabase:
+    // a) Por matrícula
+    const { data: existingByMat } = await supabase
+      .from('perfis')
+      .select('id, matricula, papel, senha')
+      .ilike('matricula', mat)
+      .maybeSingle();
+
+    // b) Por ID (se UUID válido)
+    let existingById: any = null;
+    if (isUuid) {
+      const { data: byId } = await supabase
+        .from('perfis')
+        .select('id, matricula, papel, senha')
+        .eq('id', perfilNormalized.id)
+        .maybeSingle();
+      existingById = byId;
+    }
+
+    // c) Se for diretor, procurar diretor existente no Supabase
+    let existingDirector: any = null;
+    if (isDirector) {
+      const { data: dir } = await supabase
+        .from('perfis')
+        .select('id, matricula, papel, senha')
+        .or('papel.eq.diretor,id.eq.00000000-0000-0000-0000-000000000001')
+        .limit(1)
+        .maybeSingle();
+      existingDirector = dir;
+    }
+
+    const payload: any = {
+      matricula: mat,
       nome_completo: perfilNormalized.nomeCompleto,
       equipe_id: normalizedEquipeId,
       papel: perfilNormalized.papel,
       situacao: perfilNormalized.situacao,
       email: perfilNormalized.email || null,
       telefone: perfilNormalized.telefone || null,
-      senha: perfilNormalized.senha || null,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'matricula' }).select().single();
+    };
 
-    if (res.error) {
-      console.error('Erro crítico ao salvar perfil no Supabase:', res.error);
-      throw new Error(`Falha ao salvar perfil: ${res.error.message}`);
+    if (isDirector) {
+      payload.senha = perfilNormalized.senha || existingByMat?.senha || existingById?.senha || existingDirector?.senha || getDiretorSenha();
+    } else {
+      payload.senha = null;
     }
 
-    if ((res as any).data && (res as any).data.id) {
-      perfilNormalized.id = (res as any).data.id;
+    let targetDbId: string | null = null;
+    if (existingByMat) {
+      targetDbId = existingByMat.id;
+      // Se este perfil está se tornando Diretor e havia um diretor padrão (123456) separado, remove o diretor padrão antigo
+      if (isDirector && existingDirector && existingDirector.id !== existingByMat.id && existingDirector.matricula !== mat) {
+        await supabase.from('perfis').delete().eq('id', existingDirector.id);
+      }
+    } else if (existingById) {
+      targetDbId = existingById.id;
+    } else if (isDirector && existingDirector) {
+      targetDbId = existingDirector.id;
+    }
+
+    let res: any;
+    if (targetDbId) {
+      res = await supabase.from('perfis').update(payload).eq('id', targetDbId).select().single();
+      perfilNormalized.id = targetDbId;
+    } else {
+      if (isUuid) {
+        payload.id = perfilNormalized.id;
+      }
+      res = await supabase.from('perfis').insert(payload).select().single();
+      if (res.data?.id) {
+        perfilNormalized.id = res.data.id;
+      }
+    }
+
+    if (res.error) {
+      console.error('Erro ao salvar perfil no Supabase:', res.error);
+      throw new Error(`Falha ao salvar perfil: ${res.error.message}`);
     }
   }
 
   // Atualiza cache local garantindo sincronia perfeita com Supabase
   const perfis = await getPerfis();
-  const idx = perfis.findIndex(p => p.matricula === perfilNormalized.matricula);
+  const idx = perfis.findIndex(p => p.id === perfilNormalized.id || p.matricula === perfilNormalized.matricula);
   if (idx >= 0) {
     perfis[idx] = perfilNormalized;
   } else {
@@ -704,28 +765,23 @@ export async function salvarDadosDiretor(nomeCompleto: string, matricula: string
     localStorage.setItem('ferias_pp_diretor_senha', senhaFinal);
   } catch (e) {}
 
-  if (diretor) {
-    diretor.nomeCompleto = nomeCompleto.trim();
-    diretor.matricula = matricula.trim().toUpperCase();
-    diretor.senha = senhaFinal;
-    await savePerfil(diretor);
-  } else {
-    diretor = {
-      id: '00000000-0000-0000-0000-000000000001',
-      nomeCompleto: nomeCompleto.trim(),
-      matricula: matricula.trim().toUpperCase(),
-      equipeId: '11111111-1111-1111-1111-111111111111',
-      papel: 'diretor',
-      situacao: 'ativo',
-      email: 'diretoria@unidade.local',
-      senha: senhaFinal,
-    };
-    await savePerfil(diretor);
-  }
+  const diretorToSave: Perfil = {
+    id: diretor?.id || '00000000-0000-0000-0000-000000000001',
+    nomeCompleto: nomeCompleto.trim(),
+    matricula: matricula.trim().toUpperCase(),
+    equipeId: diretor?.equipeId || '11111111-1111-1111-1111-111111111111',
+    papel: 'diretor',
+    situacao: 'ativo',
+    email: diretor?.email || 'diretoria@unidade.local',
+    telefone: diretor?.telefone || '',
+    senha: senhaFinal,
+  };
+
+  const saved = await savePerfil(diretorToSave);
 
   try {
-    localStorage.setItem('ferias_pp_logged_matricula', diretor.matricula);
+    localStorage.setItem('ferias_pp_logged_matricula', saved.matricula);
   } catch (e) {}
 
-  return diretor;
+  return saved;
 }
