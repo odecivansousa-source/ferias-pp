@@ -21,17 +21,28 @@ const STORAGE_KEYS = {
 
 export const DEFAULT_FALLBACK_USER: Perfil = {
   id: 'usr-diretor',
-  matricula: 'DIR-01',
-  nomeCompleto: 'Diretor Geral Dr. Ramos [DEMO]',
+  matricula: '123456',
+  nomeCompleto: 'Diretor da Unidade',
   equipeId: 'eq-1',
   papel: 'diretor',
   situacao: 'ativo',
-  email: 'diretoria@unidade.sap.sp.gov.br',
-  telefone: '(11) 98000-0001',
+  email: 'diretoria@unidade.local',
+  telefone: '',
 };
 
 // Inicializa o armazenamento local com proteção contra JSON vazio ou corrompido
 function initLocalStorageMock() {
+  try {
+    // Migration: Limpeza forçada de dados fictícios para permitir cadastro limpo do zero
+    if (localStorage.getItem('ferias_pp_clean_slate_v4') !== 'true') {
+      localStorage.removeItem(STORAGE_KEYS.PERFIS);
+      localStorage.removeItem(STORAGE_KEYS.SOLICITACOES);
+      localStorage.removeItem(STORAGE_KEYS.HISTORICO);
+      localStorage.removeItem('ferias_pp_logged_matricula');
+      localStorage.setItem('ferias_pp_clean_slate_v4', 'true');
+    }
+  } catch (e) {}
+
   try {
     const rawEquipes = localStorage.getItem(STORAGE_KEYS.EQUIPES);
     const parsedEquipes = rawEquipes ? JSON.parse(rawEquipes) : null;
@@ -57,28 +68,26 @@ function initLocalStorageMock() {
     if (!Array.isArray(parsedPerfis) || parsedPerfis.length === 0) {
       const mockPerfis = generateMockPoliciais();
       localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(mockPerfis));
-
-      const { solicitacoes, historico } = generateMockSolicitacoes(mockPerfis);
-      localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
-      localStorage.setItem(STORAGE_KEYS.HISTORICO, JSON.stringify(historico));
+      localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify([]));
+      localStorage.setItem(STORAGE_KEYS.HISTORICO, JSON.stringify([]));
     }
   } catch (e) {
     const mockPerfis = generateMockPoliciais();
     localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(mockPerfis));
-
-    const { solicitacoes, historico } = generateMockSolicitacoes(mockPerfis);
-    localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
-    localStorage.setItem(STORAGE_KEYS.HISTORICO, JSON.stringify(historico));
+    localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.HISTORICO, JSON.stringify([]));
   }
 }
 
-// Reset completo dos dados locais de demonstração
+// Reset completo dos dados locais para teste limpo
 export function resetDemoData(): void {
   localStorage.removeItem(STORAGE_KEYS.EQUIPES);
   localStorage.removeItem(STORAGE_KEYS.PERFIS);
   localStorage.removeItem(STORAGE_KEYS.SOLICITACOES);
   localStorage.removeItem(STORAGE_KEYS.CONFIG);
   localStorage.removeItem(STORAGE_KEYS.HISTORICO);
+  localStorage.removeItem('ferias_pp_logged_matricula');
+  localStorage.setItem('ferias_pp_clean_slate_v4', 'true');
   initLocalStorageMock();
 }
 

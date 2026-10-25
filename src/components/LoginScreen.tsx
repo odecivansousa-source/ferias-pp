@@ -21,20 +21,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
       return;
     }
 
-    // Busca flexível: encontra por matrícula exata, parcial ou número
+    // Busca apenas por matrícula de servidor cadastrado no sistema
     const encontrado = perfis.find(p => {
-      const mat = p.matricula.toUpperCase();
+      const mat = p.matricula.trim().toUpperCase();
       if (mat === termo) return true;
       if (mat.replace(/[^A-Z0-9]/g, '') === termo.replace(/[^A-Z0-9]/g, '')) return true;
-      // Permite digitar termos amigáveis para Diretor
-      if (['DIR', 'DIRETOR', 'DIRETORIA', 'ADM', 'ADMIN'].includes(termo) && (p.papel === 'diretor' || (p.papel as string) === 'admin')) return true;
-      // Permite digitar apenas o número final (ex: "001" ou "1")
-      if (termo.length <= 3 && mat.endsWith(termo.padStart(3, '0'))) return true;
       return false;
     });
 
     if (!encontrado) {
-      setErro(`Matrícula "${matriculaInput}" não localizada no quadro funcional da unidade. Verifique o número digitado ou contate a Direção da unidade.`);
+      setErro(`Matrícula "${matriculaInput}" não cadastrada no sistema. O acesso é permitido somente para servidores previamente cadastrados pela Direção da Unidade.`);
       return;
     }
 
@@ -46,14 +42,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
     onLoginSuccess(encontrado);
   };
 
-  const handleQuickLogin = (mat: string) => {
-    setMatriculaInput(mat);
-    const encontrado = perfis.find(p => 
-      p.matricula.toUpperCase() === mat.toUpperCase() || 
-      (mat.startsWith('DIR') && p.papel === 'diretor')
-    );
-    if (encontrado) {
-      onLoginSuccess(encontrado);
+  const handleQuickLoginDirector = () => {
+    // Localiza o Diretor da Unidade (matrícula inicial 123456 ou alterada)
+    const diretor = perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin');
+    if (diretor) {
+      setMatriculaInput(diretor.matricula);
+      onLoginSuccess(diretor);
+    } else {
+      setErro('Diretor não cadastrado no sistema.');
+    }
+  };
+
+  const handleQuickLoginPolicial = () => {
+    // Procura se já existe algum policial penal cadastrado
+    const primeiroPolicial = perfis.find(p => p.papel === 'policial' && p.situacao === 'ativo');
+    if (primeiroPolicial) {
+      setMatriculaInput(primeiroPolicial.matricula);
+      onLoginSuccess(primeiroPolicial);
+    } else {
+      setErro('Nenhum policial penal cadastrado ainda. Apenas servidores cadastrados têm acesso. Acesse primeiro como DIRETOR DA UNIDADE (matrícula 123456) para cadastrar os policiais em "Gestão da Unidade".');
     }
   };
 
@@ -101,13 +108,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                       setMatriculaInput(e.target.value);
                       setErro(null);
                     }}
-                    placeholder="Ex: PP-2026-001 ou DIR-01"
+                    placeholder="Digite sua matrícula (Ex: 123456)"
                     className="w-full text-sm font-mono font-bold px-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-navy-900 rounded-2xl outline-none text-navy-950 transition shadow-inner"
                   />
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
                   <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                  Basta digitar a matrícula funcional cadastrada na unidade.
+                  Diretor inicial: matrícula 123456. Policiais: informe a matrícula cadastrada.
                 </p>
               </div>
 
@@ -135,16 +142,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
               <div className="grid grid-cols-2 gap-3 text-center text-xs">
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('PP-2026-001')}
+                  onClick={handleQuickLoginPolicial}
                   className="py-3.5 px-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-950 font-black text-xs transition flex items-center justify-center gap-2 group shadow-sm active:scale-95"
+                  title="Acesso de Policial Penal com matrícula cadastrada"
                 >
                   <span className="group-hover:scale-105 transition tracking-wide">POLICIAL PENAL</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleQuickLogin('DIR-01')}
+                  onClick={handleQuickLoginDirector}
                   className="py-3.5 px-3 rounded-2xl border-2 border-navy-200 bg-navy-50/80 hover:bg-navy-100 text-navy-950 font-black text-xs transition flex items-center justify-center gap-2 group shadow-sm active:scale-95"
+                  title="Entrar como Diretor da Unidade (Matrícula inicial 123456)"
                 >
                   <span className="group-hover:scale-105 transition tracking-wide">DIRETOR DA UNIDADE</span>
                 </button>

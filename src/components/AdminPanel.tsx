@@ -95,6 +95,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       };
 
       await savePerfil(perfilToSave);
+      // Se a matrícula do diretor for alterada, atualiza a sessão local do navegador
+      if (modalPerfil.id === 'usr-diretor') {
+        localStorage.setItem('ferias_pp_logged_matricula', perfilToSave.matricula);
+      }
       setFeedback('Perfil salvo com sucesso!');
       setTimeout(() => {
         setModalPerfil(null);
@@ -129,9 +133,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleResetDemo = () => {
-    if (confirm('Tem certeza de que deseja restaurar os 120 policiais fictícios e solicitações de demonstração? Isso redefinirá os dados locais.')) {
+    if (confirm('Deseja realmente zerar todos os cadastros e recomeçar do zero? O sistema manterá apenas o Diretor da Unidade (matrícula 123456).')) {
       resetDemoData();
-      alert('Dados de demonstração restaurados!');
+      alert('Quadro da unidade zerado com sucesso!');
       onDataUpdated();
     }
   };
@@ -175,11 +179,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <button
           type="button"
           onClick={handleResetDemo}
-          className="text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3.5 py-2 rounded-2xl transition flex items-center gap-1.5"
-          title="Restaura os 120 policiais fictícios"
+          className="text-xs font-bold text-slate-700 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 border border-slate-200 px-3.5 py-2 rounded-2xl transition flex items-center gap-1.5"
+          title="Zerar todos os cadastros para iniciar novo teste"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>Restaurar Base Demo (120 Policiais)</span>
+          <span>Zerar Quadro da Unidade</span>
         </button>
       </div>
 
@@ -291,6 +295,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </tr>
                   );
                 })}
+
+                {policiaisFiltrados.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-slate-500 text-xs">
+                      <p className="font-bold text-slate-700">Nenhum servidor cadastrado nesta listagem.</p>
+                      <p className="mt-1 text-slate-400">Clique no botão "Cadastrar Policial" acima para cadastrar os policiais penais da unidade.</p>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
