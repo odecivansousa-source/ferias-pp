@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, ArrowRight, UserCheck, AlertCircle, HelpCircle } from 'lucide-react';
+import { ArrowRight, AlertCircle } from 'lucide-react';
 import { Perfil } from '../types';
 
 interface LoginScreenProps {
@@ -42,28 +42,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
     onLoginSuccess(encontrado);
   };
 
-  const handleQuickLoginDirector = () => {
-    // Localiza o Diretor da Unidade (matrícula inicial 123456 ou alterada)
-    const diretor = perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin');
-    if (diretor) {
-      setMatriculaInput(diretor.matricula);
-      onLoginSuccess(diretor);
-    } else {
-      setErro('Diretor não cadastrado no sistema.');
-    }
-  };
-
-  const handleQuickLoginPolicial = () => {
-    // Procura se já existe algum policial penal cadastrado
-    const primeiroPolicial = perfis.find(p => p.papel === 'policial' && p.situacao === 'ativo');
-    if (primeiroPolicial) {
-      setMatriculaInput(primeiroPolicial.matricula);
-      onLoginSuccess(primeiroPolicial);
-    } else {
-      setErro('Nenhum policial penal cadastrado ainda. Apenas servidores cadastrados têm acesso. Acesse primeiro como DIRETOR DA UNIDADE (matrícula 123456) para cadastrar os policiais em "Gestão da Unidade".');
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between selection:bg-navy-900 selection:text-gold-300">
       {/* Topo Institucional */}
@@ -87,12 +65,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
               Sistema de Planejamento e Controle de Férias
             </p>
             <div className="mt-3 inline-block bg-gold-500/20 text-gold-300 border border-gold-500/30 text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
-              Policial Penal & Diretor da Unidade
+              Acesso Funcional da Unidade
             </div>
           </div>
 
           {/* Formulário de Acesso por Matrícula */}
-          <div className="p-6 sm:p-8 space-y-6">
+          <div className="p-6 sm:p-8">
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
                 <label className="block text-xs font-black text-navy-950 uppercase tracking-wider mb-2">
@@ -108,14 +86,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                       setMatriculaInput(e.target.value);
                       setErro(null);
                     }}
-                    placeholder="Digite sua matrícula (Ex: 123456)"
+                    placeholder="Digite sua matrícula funcional"
                     className="w-full text-sm font-mono font-bold px-4 py-3.5 bg-slate-50 border-2 border-slate-200 focus:border-navy-900 rounded-2xl outline-none text-navy-950 transition shadow-inner"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
-                  <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                  Diretor inicial: matrícula 123456. Policiais: informe a matrícula cadastrada.
-                </p>
               </div>
 
               {erro && (
@@ -133,32 +107,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                 <ArrowRight className="w-4 h-4 text-gold-400" />
               </button>
             </form>
-
-            {/* Apenas 2 Acessos na Unidade: POLICIAL PENAL e DIRETOR DA UNIDADE */}
-            <div className="pt-4 border-t border-slate-100 space-y-2.5">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block text-center">
-                Atalhos Rápidos de Acesso:
-              </span>
-              <div className="grid grid-cols-2 gap-3 text-center text-xs">
-                <button
-                  type="button"
-                  onClick={handleQuickLoginPolicial}
-                  className="py-3.5 px-3 rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-950 font-black text-xs transition flex items-center justify-center gap-2 group shadow-sm active:scale-95"
-                  title="Acesso de Policial Penal com matrícula cadastrada"
-                >
-                  <span className="group-hover:scale-105 transition tracking-wide">POLICIAL PENAL</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleQuickLoginDirector}
-                  className="py-3.5 px-3 rounded-2xl border-2 border-navy-200 bg-navy-50/80 hover:bg-navy-100 text-navy-950 font-black text-xs transition flex items-center justify-center gap-2 group shadow-sm active:scale-95"
-                  title="Entrar como Diretor da Unidade (Matrícula inicial 123456)"
-                >
-                  <span className="group-hover:scale-105 transition tracking-wide">DIRETOR DA UNIDADE</span>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
