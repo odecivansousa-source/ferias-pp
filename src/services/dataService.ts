@@ -227,6 +227,43 @@ export async function getPerfis(): Promise<Perfil[]> {
     try {
       const { data, error } = await supabase.from('perfis').select('*').order('nome_completo');
       if (!error && data && data.length > 0) {
+        // Auto-sincronização: envia cadastros salvos no localStorage para a nuvem
+        try {
+          const rawLocal = localStorage.getItem(STORAGE_KEYS.PERFIS);
+          const localList: Perfil[] = rawLocal ? JSON.parse(rawLocal) : [];
+          for (const lp of localList) {
+            const matLimpa = lp.matricula ? lp.matricula.trim().toUpperCase() : '';
+            if (matLimpa && matLimpa !== '123456') {
+              const jaExiste = data.some(d => d.matricula.trim().toUpperCase() === matLimpa);
+              if (!jaExiste) {
+                const equipeValida = (lp.equipeId && lp.equipeId.length === 36) ? lp.equipeId : '11111111-1111-1111-1111-111111111111';
+                await supabase.from('perfis').upsert({
+                  matricula: matLimpa,
+                  nome_completo: lp.nomeCompleto || 'Policial Penal',
+                  equipe_id: equipeValida,
+                  papel: lp.papel || 'policial',
+                  situacao: lp.situacao || 'ativo',
+                  email: lp.email || null,
+                  telefone: lp.telefone || null,
+                  senha: lp.senha || null,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: 'matricula' });
+                data.push({
+                  id: lp.id,
+                  matricula: matLimpa,
+                  nome_completo: lp.nomeCompleto || 'Policial Penal',
+                  equipe_id: equipeValida,
+                  papel: lp.papel || 'policial',
+                  situacao: lp.situacao || 'ativo',
+                  email: lp.email,
+                  telefone: lp.telefone,
+                  senha: lp.senha,
+                });
+              }
+            }
+          }
+        } catch (e) {}
+
         return data.map(d => ({
           id: d.id,
           authUserId: d.auth_user_id,
