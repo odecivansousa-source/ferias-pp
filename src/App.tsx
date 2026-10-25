@@ -21,6 +21,7 @@ import {
   DEFAULT_FALLBACK_USER
 } from './services/dataService';
 import { MOCK_CONFIGURACAO, MOCK_EQUIPES, generateMockPoliciais } from './services/mockData';
+import { getSupabaseClient } from './services/supabase';
 import { RefreshCw } from 'lucide-react';
 
 export function App() {
@@ -112,7 +113,59 @@ export function App() {
       setActiveTabState(hash);
     }
 
-    return () => clearTimeout(failsafeTimer);
+    // -------------------------------------------------------------------------
+    // COMUNICAÇÃO EM TEMPO REAL SUPABASE (WebSockets + Polling Ativo + Foco)
+    // -------------------------------------------------------------------------
+    const supabase = getSupabaseClient();
+    let channel: any = null;
+
+    if (supabase) {
+      try {
+        channel = supabase
+          .channel('realtime_ferias_pp')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'perfis' }, () => {
+            console.log('⚡ [TEMPO REAL] Policiais atualizados no Supabase');
+            loadData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitacoes_ferias' }, () => {
+            console.log('⚡ [TEMPO REAL] Solicitação atualizada no Supabase');
+            loadData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'periodos_ferias' }, () => {
+            console.log('⚡ [TEMPO REAL] Períodos atualizados no Supabase');
+            loadData();
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn('Erro ao conectar realtime:', err);
+      }
+    }
+
+    // Heartbeat automático: sincroniza a cada 4 segundos garantindo tempo real mesmo se o celular suspender o websocket
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    }, 4000);
+
+    // Ao desbloquear o celular ou focar na aba
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    return () => {
+      clearTimeout(failsafeTimer);
+      clearInterval(pollTimer);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      if (channel && supabase) {
+        supabase.removeChannel(channel);
+      }
+    };
   }, [loadData]);
 
   const handleLoginSuccess = (user: Perfil) => {

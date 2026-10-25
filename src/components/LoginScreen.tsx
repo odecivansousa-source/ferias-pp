@@ -60,12 +60,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
           const supabase = getSupabaseClient();
           if (supabase) {
             const clean = termo.replace(/[^A-Z0-9]/g, '');
-            const { data: dbData } = await supabase
-              .from('perfis')
-              .select('*')
-              .or(`matricula.ilike.${termo},matricula.ilike.${clean}`)
-              .limit(1)
-              .maybeSingle();
+            let query = supabase.from('perfis').select('*');
+            if (clean && clean !== termo) {
+              query = query.or(`matricula.ilike.${termo},matricula.ilike.${clean}`);
+            } else {
+              query = query.ilike('matricula', termo);
+            }
+            const { data: dbData } = await query.limit(1).maybeSingle();
 
             if (dbData) {
               targetUser = {
@@ -234,10 +235,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                       setErro(null);
                       try {
                         const atualizados = await getPerfis();
-                        const achou = atualizados.find(p => {
+                        let achou = atualizados.find(p => {
                           const mat = p.matricula.trim().toUpperCase();
                           return mat === termoMatricula || mat.replace(/[^A-Z0-9]/g, '') === termoMatricula.replace(/[^A-Z0-9]/g, '');
                         });
+
+                        if (!achou) {
+                          const supabase = getSupabaseClient();
+                          if (supabase && termoMatricula) {
+                            const clean = termoMatricula.replace(/[^A-Z0-9]/g, '');
+                            let query = supabase.from('perfis').select('*');
+                            if (clean && clean !== termoMatricula) {
+                              query = query.or(`matricula.ilike.${termoMatricula},matricula.ilike.${clean}`);
+                            } else {
+                              query = query.ilike('matricula', termoMatricula);
+                            }
+                            const { data: dbData } = await query.limit(1).maybeSingle();
+                            if (dbData) {
+                              achou = {
+                                id: dbData.id,
+                                authUserId: dbData.auth_user_id,
+                                matricula: dbData.matricula,
+                                nomeCompleto: dbData.nome_completo,
+                                equipeId: normalizeEquipeId(dbData.equipe_id),
+                                papel: dbData.papel,
+                                situacao: dbData.situacao,
+                                email: dbData.email,
+                                telefone: dbData.telefone,
+                                senha: dbData.senha,
+                              };
+                            }
+                          }
+                        }
+
                         if (achou) {
                           onLoginSuccess(achou);
                         } else {
