@@ -82,6 +82,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
   // Análise de conflito em tempo real
   const periodosAtivos = getPeriodosAtivos();
   const todosPreenchidos = periodosAtivos.every(p => p.dataInicio && p.dataFim);
+  const periodosComDatas = periodosAtivos.filter(p => p.dataInicio && p.dataFim);
 
   const validacaoEstrutural = todosPreenchidos
     ? validarPeriodosModalidade(
@@ -90,11 +91,13 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
       )
     : { valido: true, mensagem: '' };
 
-  const analiseConflito = (userTeam && todosPreenchidos && validacaoEstrutural.valido)
+  const analiseConflito = (userTeam && periodosComDatas.length > 0)
     ? analisarConflitosSolicitacao(
         userTeam,
-        periodosAtivos.map(p => ({ dataInicio: p.dataInicio, dataFim: p.dataFim })),
-        allSolicitacoes
+        periodosComDatas.map(p => ({ dataInicio: p.dataInicio, dataFim: p.dataFim })),
+        allSolicitacoes,
+        undefined,
+        currentUser.id
       )
     : null;
 
@@ -168,9 +171,9 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
           <div className="bg-navy-800/80 border border-navy-700/80 rounded-2xl p-4 text-center min-w-[150px]">
             <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Vagas por Equipe</span>
             <span className="text-2xl font-black text-gold-400">
-              {userTeam?.limiteAfastamentosSimultaneos || 3}
+              {userTeam?.limiteAfastamentosSimultaneos || 1}
             </span>
-            <span className="text-[11px] text-slate-300 block">simultâneas</span>
+            <span className="text-[11px] text-slate-300 block">simultânea</span>
           </div>
         </div>
       </div>
@@ -299,6 +302,37 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                       />
                     </div>
                   </div>
+
+                  {/* Feedback em tempo real do Período 1 */}
+                  {periodo1.ini && periodo1.fim && analiseConflito && (() => {
+                    const conflitosP1 = analiseConflito.colegasConflitantes.filter(c => c.periodoPropostoNumero === 1);
+                    const temAprov = conflitosP1.some(c => c.status === 'APROVADA');
+                    const temPend = conflitosP1.some(c => c.status === 'PENDENTE' || c.status === 'DEVOLVIDA');
+                    if (temAprov) {
+                      const c = conflitosP1.find(x => x.status === 'APROVADA');
+                      return (
+                        <div className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                          <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                          <span>Vaga já ocupada por {c?.nome} (Matrícula: {c?.matricula}) - Férias Aprovadas</span>
+                        </div>
+                      );
+                    }
+                    if (temPend) {
+                      const nomes = conflitosP1.map(x => `${x.nome} (${x.matricula})`).join(', ');
+                      return (
+                        <div className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                          <span>Choque de período com {nomes} (Solicitação Pendente)</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                        <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                        <span>1º Período livre na sua equipe</span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Período 2 (se modalidade exigir) */}
@@ -333,6 +367,37 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                         />
                       </div>
                     </div>
+
+                    {/* Feedback em tempo real do Período 2 */}
+                    {periodo2.ini && periodo2.fim && analiseConflito && (() => {
+                      const conflitosP2 = analiseConflito.colegasConflitantes.filter(c => c.periodoPropostoNumero === 2);
+                      const temAprov = conflitosP2.some(c => c.status === 'APROVADA');
+                      const temPend = conflitosP2.some(c => c.status === 'PENDENTE' || c.status === 'DEVOLVIDA');
+                      if (temAprov) {
+                        const c = conflitosP2.find(x => x.status === 'APROVADA');
+                        return (
+                          <div className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                            <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                            <span>Vaga já ocupada por {c?.nome} (Matrícula: {c?.matricula}) - Férias Aprovadas</span>
+                          </div>
+                        );
+                      }
+                      if (temPend) {
+                        const nomes = conflitosP2.map(x => `${x.nome} (${x.matricula})`).join(', ');
+                        return (
+                          <div className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                            <span>Choque de período com {nomes} (Solicitação Pendente)</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                          <span>2º Período livre na sua equipe</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -368,32 +433,132 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                         />
                       </div>
                     </div>
+
+                    {/* Feedback em tempo real do Período 3 */}
+                    {periodo3.ini && periodo3.fim && analiseConflito && (() => {
+                      const conflitosP3 = analiseConflito.colegasConflitantes.filter(c => c.periodoPropostoNumero === 3);
+                      const temAprov = conflitosP3.some(c => c.status === 'APROVADA');
+                      const temPend = conflitosP3.some(c => c.status === 'PENDENTE' || c.status === 'DEVOLVIDA');
+                      if (temAprov) {
+                        const c = conflitosP3.find(x => x.status === 'APROVADA');
+                        return (
+                          <div className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                            <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                            <span>Vaga já ocupada por {c?.nome} (Matrícula: {c?.matricula}) - Férias Aprovadas</span>
+                          </div>
+                        );
+                      }
+                      if (temPend) {
+                        const nomes = conflitosP3.map(x => `${x.nome} (${x.matricula})`).join(', ');
+                        return (
+                          <div className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                            <span>Choque de período com {nomes} (Solicitação Pendente)</span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
+                          <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+                          <span>3º Período livre na sua equipe</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
 
               {/* Radar de Conflito em Tempo Real */}
-              {todosPreenchidos && analiseConflito && (
-                <div className={`p-4 rounded-2xl border text-xs leading-relaxed ${
-                  analiseConflito.temConflito
-                    ? 'bg-rose-50 border-rose-300 text-rose-900'
-                    : 'bg-emerald-50 border-emerald-300 text-emerald-900'
+              {periodosComDatas.length > 0 && analiseConflito && (
+                <div className={`p-5 rounded-3xl border text-xs leading-relaxed transition-all shadow-sm ${
+                  analiseConflito.temAprovadas
+                    ? 'bg-rose-50/95 border-rose-300 text-rose-950'
+                    : analiseConflito.temPendentes
+                    ? 'bg-amber-50/95 border-amber-300 text-amber-950'
+                    : 'bg-emerald-50/95 border-emerald-300 text-emerald-950'
                 }`}>
-                  <div className="flex items-start gap-2.5">
-                    {analiseConflito.temConflito ? (
-                      <ShieldAlert className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3">
+                    {analiseConflito.temAprovadas ? (
+                      <div className="p-2.5 rounded-2xl bg-rose-100 text-rose-700 flex-shrink-0 mt-0.5">
+                        <ShieldAlert className="w-6 h-6 text-rose-600" />
+                      </div>
+                    ) : analiseConflito.temPendentes ? (
+                      <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-700 flex-shrink-0 mt-0.5">
+                        <AlertTriangle className="w-6 h-6 text-amber-600" />
+                      </div>
                     ) : (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                      <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-700 flex-shrink-0 mt-0.5">
+                        <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                      </div>
                     )}
-                    <div>
-                      <p className="font-bold text-sm">
-                        {analiseConflito.temConflito ? 'Alerta de Conflito de Efetivo' : 'Período Disponível na Equipe'}
-                      </p>
-                      <p className="mt-1">{analiseConflito.mensagem}</p>
-                      {analiseConflito.sugestao && (
-                        <p className="mt-1.5 font-semibold text-rose-800">
-                          💡 Dica: {analiseConflito.sugestao}
+
+                    <div className="flex-1 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-black text-sm">
+                          {analiseConflito.temAprovadas
+                            ? 'Vaga Já Ocupada na sua Equipe (Férias Aprovadas)'
+                            : analiseConflito.temPendentes
+                            ? 'Aviso de Choque de Período na Mesma Equipe'
+                            : 'Período 100% Disponível na sua Equipe'}
                         </p>
+                        <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
+                          analiseConflito.temAprovadas
+                            ? 'bg-rose-200 text-rose-900 border border-rose-300'
+                            : analiseConflito.temPendentes
+                            ? 'bg-amber-200 text-amber-900 border border-amber-300'
+                            : 'bg-emerald-200 text-emerald-900 border border-emerald-300'
+                        }`}>
+                          Regra da Unidade: 1 policial por período
+                        </span>
+                      </div>
+
+                      <p className="text-xs leading-relaxed">
+                        {analiseConflito.mensagem}
+                      </p>
+
+                      {/* Lista detalhada dos policiais da equipe em concorrência ou conflito */}
+                      {analiseConflito.colegasConflitantes.length > 0 && (
+                        <div className="mt-3 space-y-2 pt-2 border-t border-slate-200/60">
+                          <span className="text-[11px] font-black uppercase tracking-wider block text-slate-700">
+                            Policial(is) da sua equipe com datas conflitantes:
+                          </span>
+                          <div className="grid grid-cols-1 gap-2">
+                            {analiseConflito.colegasConflitantes.map((c, i) => (
+                              <div
+                                key={i}
+                                className={`p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                                  c.status === 'APROVADA'
+                                    ? 'bg-white border-rose-300 text-rose-950 shadow-sm'
+                                    : 'bg-white border-amber-300 text-amber-950 shadow-sm'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${c.status === 'APROVADA' ? 'bg-rose-600' : 'bg-amber-500'}`} />
+                                  <span className="font-black text-xs">{c.nome}</span>
+                                  <span className="text-[10px] bg-slate-100 font-mono font-bold px-2 py-0.5 rounded border border-slate-200 text-slate-600">
+                                    Matrícula: {c.matricula}
+                                  </span>
+                                </div>
+                                <div className="text-left sm:text-right text-xs">
+                                  <span className="font-bold block text-navy-950">
+                                    {formatarDataBR(c.periodoColegaInicio)} a {formatarDataBR(c.periodoColegaFim)}
+                                  </span>
+                                  <span className={`text-[10px] font-black uppercase ${
+                                    c.status === 'APROVADA' ? 'text-rose-700' : 'text-amber-700'
+                                  }`}>
+                                    {c.status === 'APROVADA' ? 'Homologada / Aprovada pela Direção' : 'Solicitação Pendente (Em Análise)'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {analiseConflito.sugestao && (
+                        <div className="mt-2 p-2.5 rounded-xl bg-white/90 border border-slate-200 text-[11px] font-medium leading-relaxed">
+                          💡 <b>Dica:</b> {analiseConflito.sugestao}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -417,15 +582,25 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
               {/* Botão de Envio */}
               <button
                 type="submit"
-                disabled={enviando || (todosPreenchidos && !validacaoEstrutural.valido)}
-                className={`w-full py-3.5 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg transition ${
-                  enviando || (todosPreenchidos && !validacaoEstrutural.valido)
+                disabled={enviando || !todosPreenchidos || !validacaoEstrutural.valido || Boolean(analiseConflito?.temAprovadas)}
+                className={`w-full py-4 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg transition ${
+                  enviando || !todosPreenchidos || !validacaoEstrutural.valido || Boolean(analiseConflito?.temAprovadas)
                     ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    : analiseConflito?.temPendentes
+                    ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20 active:scale-[0.99]'
                     : 'bg-navy-950 hover:bg-navy-900 text-white shadow-navy-950/20 active:scale-[0.99]'
                 }`}
               >
                 <Send className="w-4 h-4 text-gold-400" />
-                <span>{enviando ? 'Enviando Solicitação...' : 'Enviar Solicitação para a Direção'}</span>
+                <span>
+                  {enviando
+                    ? 'Enviando Solicitação...'
+                    : analiseConflito?.temAprovadas
+                    ? 'Período Indisponível (Vaga Já Ocupada)'
+                    : analiseConflito?.temPendentes
+                    ? 'Enviar Solicitação (Ciente da Concorrência)'
+                    : 'Enviar Solicitação para a Direção'}
+                </span>
               </button>
             </form>
           </div>
@@ -504,7 +679,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
               <span>Regras Importantes:</span>
             </div>
             <ul className="list-disc list-inside space-y-1 text-amber-900/90 text-[11px] leading-relaxed">
-              <li>O limite é de até <b>{userTeam?.limiteAfastamentosSimultaneos || 3} policiais</b> afastados por equipe ao mesmo tempo.</li>
+              <li>O limite da unidade é de <b>{userTeam?.limiteAfastamentosSimultaneos || 1} policial</b> afastado por equipe ao mesmo tempo.</li>
               <li>Solicitações são analisadas por ordem cronológica e critérios operacionais da SAP.</li>
               <li>Uma solicitação <b>Aprovada</b> só pode ser alterada mediante despacho formal da Direção.</li>
             </ul>

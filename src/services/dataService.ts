@@ -74,9 +74,9 @@ function initLocalStorageMock() {
   } catch (e) {}
 
   try {
-    if (localStorage.getItem('ferias_pp_equipes_v3') !== 'true') {
+    if (localStorage.getItem('ferias_pp_equipes_v4') !== 'true') {
       localStorage.setItem(STORAGE_KEYS.EQUIPES, JSON.stringify(MOCK_EQUIPES));
-      localStorage.setItem('ferias_pp_equipes_v3', 'true');
+      localStorage.setItem('ferias_pp_equipes_v4', 'true');
     }
   } catch (e) {
     localStorage.setItem(STORAGE_KEYS.EQUIPES, JSON.stringify(MOCK_EQUIPES));
@@ -622,7 +622,7 @@ export async function aprovarSolicitacaoTransacional(
   }
 
   // Análise estrita de conflitos
-  const analise = analisarConflitosSolicitacao(equipe, target.periodos, solicitacoes, solicitacaoId);
+  const analise = analisarConflitosSolicitacao(equipe, target.periodos, solicitacoes, solicitacaoId, target.policialId);
   if (analise.temConflito) {
     return {
       sucesso: false,

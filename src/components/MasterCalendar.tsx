@@ -282,7 +282,7 @@ export const MasterCalendar: React.FC<MasterCalendarProps> = ({
               const equipeAlvo = selectedEquipeId !== 'TODAS'
                 ? equipes.find(e => e.id === selectedEquipeId)
                 : null;
-              const limite = equipeAlvo?.limiteAfastamentosSimultaneos || 3;
+              const limite = equipeAlvo?.limiteAfastamentosSimultaneos || 1;
 
               const isConflito = aprovadosCount >= limite;
               const temMovimento = aprovadosCount > 0 || pendentesCount > 0 || devolvidosCount > 0;

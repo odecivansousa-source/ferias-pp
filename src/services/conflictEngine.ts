@@ -1,12 +1,30 @@
-import { PeriodoFerias, SolicitacaoFerias, Equipe, ConflitoDia } from '../types';
+import { PeriodoFerias, SolicitacaoFerias, Equipe, ConflitoDia, StatusSolicitacao } from '../types';
 
 export interface ValidacaoPeriodoResultado {
   valido: boolean;
   mensagem: string;
 }
 
+export interface ConflitoColega {
+  solicitacaoId: string;
+  policialId: string;
+  nome: string;
+  matricula: string;
+  status: StatusSolicitacao;
+  periodoColegaInicio: string;
+  periodoColegaFim: string;
+  periodoPropostoNumero: number;
+  inicioSobreposicao: string;
+  fimSobreposicao: string;
+  diasSobrepostos: number;
+}
+
 export interface AnaliseConflitoResultado {
-  temConflito: boolean;
+  temConflito: boolean; // Verdadeiro se excede limite com férias já APROVADAS
+  temConcorrencia: boolean; // Verdadeiro se colide com APROVADAS ou PENDENTES
+  temAprovadas: boolean;
+  temPendentes: boolean;
+  colegasConflitantes: ConflitoColega[];
   diasConflitantes: ConflitoDia[];
   mensagem: string;
   sugestao?: string;
@@ -104,66 +122,116 @@ export function calcularDataFim(dataInicio: string, dias: number): string {
 }
 
 /**
- * Analisa se um ou mais períodos apresentam conflito com as férias JÁ APROVADAS da equipe
+ * Analisa se um ou mais períodos propostos colidem com férias APROVADAS ou PENDENTES
+ * de outros policiais da mesma equipe, respeitando o limite da unidade (geralmente 1 policial).
  */
 export function analisarConflitosSolicitacao(
   equipe: Equipe,
   periodosPropostos: { dataInicio: string; dataFim: string }[],
   todasSolicitacoes: SolicitacaoFerias[],
-  ignorarSolicitacaoId?: string
+  ignorarSolicitacaoId?: string,
+  policialAtualId?: string
 ): AnaliseConflitoResultado {
-  const limite = equipe.limiteAfastamentosSimultaneos;
+  const limite = equipe.limiteAfastamentosSimultaneos || 1;
   const diasConflitantesMap = new Map<string, ConflitoDia>();
+  const colegasConflitantesMap = new Map<string, ConflitoColega>();
   let maxAfastadosGeral = 0;
 
-  // Filtrar apenas solicitações APROVADAS da mesma equipe (rejeitadas e canceladas são desconsideradas)
-  const solicitacoesAprovadas = todasSolicitacoes.filter(s => 
+  // Filtrar solicitações ativas da MESMA equipe (ignora o próprio policial e solicitações canceladas/rejeitadas)
+  const solicitacoesEquipe = todasSolicitacoes.filter(s =>
     s.equipeId === equipe.id &&
-    s.status === 'APROVADA' &&
-    (!ignorarSolicitacaoId || s.id !== ignorarSolicitacaoId)
+    (!ignorarSolicitacaoId || s.id !== ignorarSolicitacaoId) &&
+    (!policialAtualId || s.policialId !== policialAtualId) &&
+    s.status !== 'REJEITADA' &&
+    s.status !== 'CANCELADA' &&
+    s.status !== 'RASCUNHO'
   );
 
-  periodosPropostos.forEach(pProp => {
+  periodosPropostos.forEach((pProp, propIdx) => {
     if (!pProp.dataInicio || !pProp.dataFim) return;
 
+    const propNum = propIdx + 1;
+
+    // 1. Identificar choque direto de intervalos com outros policiais da equipe
+    solicitacoesEquipe.forEach(sol => {
+      const colegaNome = sol.policial?.nomeCompleto || 'Policial Penal';
+      const colegaMatricula = sol.policial?.matricula || '-';
+
+      sol.periodos.forEach(pColega => {
+        if (!pColega.dataInicio || !pColega.dataFim) return;
+
+        // Há sobreposição se: início1 <= fim2 E início2 <= fim1
+        if (pProp.dataInicio <= pColega.dataFim && pColega.dataInicio <= pProp.dataFim) {
+          const inicioSob = pProp.dataInicio > pColega.dataInicio ? pProp.dataInicio : pColega.dataInicio;
+          const fimSob = pProp.dataFim < pColega.dataFim ? pProp.dataFim : pColega.dataFim;
+
+          const startMs = new Date(inicioSob + 'T00:00:00').getTime();
+          const endMs = new Date(fimSob + 'T00:00:00').getTime();
+          const diasSob = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)) + 1);
+
+          const key = `${sol.id}_${pColega.id || pColega.dataInicio}_prop${propNum}`;
+          if (!colegasConflitantesMap.has(key)) {
+            colegasConflitantesMap.set(key, {
+              solicitacaoId: sol.id,
+              policialId: sol.policialId,
+              nome: colegaNome,
+              matricula: colegaMatricula,
+              status: sol.status,
+              periodoColegaInicio: pColega.dataInicio,
+              periodoColegaFim: pColega.dataFim,
+              periodoPropostoNumero: propNum,
+              inicioSobreposicao: inicioSob,
+              fimSobreposicao: fimSob,
+              diasSobrepostos: diasSob,
+            });
+          }
+        }
+      });
+    });
+
+    // 2. Análise dia a dia para contagem de capacidade e limites de vagas
     const curr = new Date(pProp.dataInicio + 'T00:00:00');
     const end = new Date(pProp.dataFim + 'T00:00:00');
 
     while (curr <= end) {
       const dataStr = curr.toISOString().split('T')[0];
 
-      // Verificar quantos policiais da mesma equipe já estão aprovados nesta data
-      const policiaisNesteDia: { nome: string; matricula: string; status: 'APROVADA' }[] = [];
+      const policiaisAprovadosNesteDia: { nome: string; matricula: string; status: StatusSolicitacao }[] = [];
+      const policiaisPendentesNesteDia: { nome: string; matricula: string; status: StatusSolicitacao }[] = [];
 
-      solicitacoesAprovadas.forEach(sol => {
-        const estaAfas = sol.periodos.some(p => {
-          return dataStr >= p.dataInicio && dataStr <= p.dataFim;
-        });
-
-        if (estaAfas && sol.policial) {
-          policiaisNesteDia.push({
-            nome: sol.policial.nomeCompleto,
-            matricula: sol.policial.matricula,
-            status: 'APROVADA',
-          });
+      solicitacoesEquipe.forEach(sol => {
+        const estaAfas = sol.periodos.some(p => dataStr >= p.dataInicio && dataStr <= p.dataFim);
+        if (estaAfas) {
+          const item = {
+            nome: sol.policial?.nomeCompleto || 'Policial Penal',
+            matricula: sol.policial?.matricula || '-',
+            status: sol.status,
+          };
+          if (sol.status === 'APROVADA') {
+            policiaisAprovadosNesteDia.push(item);
+          } else {
+            policiaisPendentesNesteDia.push(item);
+          }
         }
       });
 
-      const totalAfastados = policiaisNesteDia.length;
-      if (totalAfastados > maxAfastadosGeral) {
-        maxAfastadosGeral = totalAfastados;
+      const totalAprovados = policiaisAprovadosNesteDia.length;
+      const totalMovimento = totalAprovados + policiaisPendentesNesteDia.length;
+
+      if (totalAprovados > maxAfastadosGeral) {
+        maxAfastadosGeral = totalAprovados;
       }
 
-      // Se somando este policial (totalAfastados + 1) ultrapassar o limite da equipe
-      if (totalAfastados >= limite) {
+      // Se somando este policial (totalAprovados + 1) ultrapassar o limite de aprovados
+      if (totalAprovados >= limite) {
         diasConflitantesMap.set(dataStr, {
           data: dataStr,
-          totalAfastados,
+          totalAfastados: totalAprovados,
           limiteEquipe: limite,
           equipeId: equipe.id,
           equipeNome: equipe.nome,
           temConflito: true,
-          policiaisAfastados: policiaisNesteDia,
+          policiaisAfastados: [...policiaisAprovadosNesteDia, ...policiaisPendentesNesteDia],
         });
       }
 
@@ -171,30 +239,48 @@ export function analisarConflitosSolicitacao(
     }
   });
 
+  const colegasConflitantes = Array.from(colegasConflitantesMap.values());
   const diasConflitantes = Array.from(diasConflitantesMap.values()).sort((a, b) => a.data.localeCompare(b.data));
-  const temConflito = diasConflitantes.length > 0;
 
-  if (temConflito) {
-    const primeiroDia = formatarDataBR(diasConflitantes[0].data);
-    const ultimoDia = formatarDataBR(diasConflitantes[diasConflitantes.length - 1].data);
-    const qtdDias = diasConflitantes.length;
+  const temAprovadas = colegasConflitantes.some(c => c.status === 'APROVADA') || diasConflitantes.length > 0;
+  const temPendentes = colegasConflitantes.some(c => c.status === 'PENDENTE' || c.status === 'DEVOLVIDA');
+  const temConcorrencia = colegasConflitantes.length > 0;
+  const temConflito = temAprovadas; // Para travar aprovação formal de duas pessoas simultâneas
 
-    return {
-      temConflito: true,
-      diasConflitantes,
-      afastadosMaximosNoPeriodo: maxAfastadosGeral,
-      limiteEquipe: limite,
-      mensagem: `Este período apresenta conflito com o limite de afastamentos configurado para sua equipe (${limite} policiais simultâneos). Foram identificados ${qtdDias} dia(s) com vagas esgotadas entre ${primeiroDia} e ${ultimoDia}. Escolha outras datas ou aguarde a análise da administração.`,
-      sugestao: `Considere adiantar ou postergar suas datas para meses com menor concorrência na ${equipe.nome}.`,
-    };
+  // Montar mensagem amigável e explicativa
+  let mensagem = '';
+  let sugestao = '';
+
+  if (temAprovadas) {
+    const colegasAprovados = colegasConflitantes.filter(c => c.status === 'APROVADA');
+    const nomes = Array.from(new Set(colegasAprovados.map(c => `${c.nome} (Matrícula: ${c.matricula})`))).join(', ');
+    const dias = diasConflitantes.length;
+
+    mensagem = `Vaga já preenchida na ${equipe.nome} (limite de ${limite} policial por período). Já existem férias APROVADAS pela Direção para: ${nomes || 'outro servidor'}. O período escolhido possui ${dias > 0 ? dias : 'vários'} dia(s) com vagas esgotadas.`;
+    sugestao = `Como a unidade possui poucos policiais e só pode sair 1 por equipe, escolha outro mês ou período livre para conseguir a aprovação da Direção.`;
+  } else if (temPendentes) {
+    const colegasPend = colegasConflitantes.filter(c => c.status === 'PENDENTE' || c.status === 'DEVOLVIDA');
+    const detalhesLista = Array.from(
+      new Set(colegasPend.map(c => `${c.nome} (Matrícula: ${c.matricula}, de ${formatarDataBR(c.periodoColegaInicio)} a ${formatarDataBR(c.periodoColegaFim)})`))
+    ).join('; ');
+
+    mensagem = `Atenção: Na ${equipe.nome} (onde geralmente só pode sair ${limite} policial de férias por período), já existe solicitação de colega para estas mesmas datas: ${detalhesLista}. Haverá concorrência pela vaga.`;
+    sugestao = `Para ter suas férias confirmadas com maior agilidade e sem concorrência com o colega, você pode escolher outro período livre na sua equipe.`;
+  } else {
+    mensagem = `Período totalmente disponível na ${equipe.nome}. Nenhum outro policial da sua equipe solicitou estas datas (${limite} vaga liberada).`;
   }
 
   return {
-    temConflito: false,
-    diasConflitantes: [],
+    temConflito,
+    temConcorrencia,
+    temAprovadas,
+    temPendentes,
+    colegasConflitantes,
+    diasConflitantes,
     afastadosMaximosNoPeriodo: maxAfastadosGeral,
     limiteEquipe: limite,
-    mensagem: `Período em conformidade com o limite de efetivo da equipe (${maxAfastadosGeral} de ${limite} vagas ocupadas no período).`,
+    mensagem,
+    sugestao: sugestao || undefined,
   };
 }
 
