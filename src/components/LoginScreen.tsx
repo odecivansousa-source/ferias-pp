@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, AlertCircle, KeyRound, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Perfil } from '../types';
-import { getDiretorSenha, getPerfis, normalizeEquipeId } from '../services/dataService';
+import { getDiretorSenha, getPerfis, normalizeEquipeId, verificarSenhaDiretor } from '../services/dataService';
 import { getSupabaseClient } from '../services/supabase';
 
 interface LoginScreenProps {
@@ -55,12 +55,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
           return false;
         }) || null;
 
-        // Se ainda não encontrou via getPerfis, busca diretamente no Supabase por matrícula
+        // Se ainda não encontrou via getPerfis, busca diretamente no Supabase por matrícula (apenas campos públicos)
         if (!targetUser) {
           const supabase = getSupabaseClient();
           if (supabase) {
             const clean = termo.replace(/[^A-Z0-9]/g, '');
-            let query = supabase.from('perfis').select('*');
+            let query = supabase
+              .from('perfis')
+              .select('id, auth_user_id, matricula, nome_completo, equipe_id, papel, situacao, email, telefone');
             if (clean && clean !== termo) {
               query = query.or(`matricula.ilike.${termo},matricula.ilike.${clean}`);
             } else {
@@ -79,7 +81,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
                 situacao: dbData.situacao,
                 email: dbData.email,
                 telefone: dbData.telefone,
-                senha: dbData.senha,
               };
             }
           }
@@ -103,20 +104,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
 
     const ehDiretor = targetUser.papel === 'diretor' || (targetUser.papel as string) === 'admin';
 
-    // Se for o DIRETOR DA UNIDADE: validação obrigatória de senha exclusiva
+    // Se for o DIRETOR DA UNIDADE: validação obrigatória de senha exclusiva via serviço seguro
     if (ehDiretor) {
       if (!senhaInput.trim()) {
         setErro('O Diretor da Unidade deve informar a senha de acesso (senha inicial: 123 ou 131220).');
         return;
       }
 
-      const senhaInformada = senhaInput.trim();
-      const senhaCorreta = targetUser.senha || getDiretorSenha();
-      const senhasValidas = [senhaCorreta, '123', '131220', '1974', getDiretorSenha()].filter(Boolean);
-
-      if (!senhasValidas.includes(senhaInformada)) {
-        setErro('Senha de acesso do Diretor incorreta. Por favor, verifique e tente novamente.');
-        return;
+      setVerificando(true);
+      try {
+        const senhaValida = await verificarSenhaDiretor(targetUser.matricula, senhaInput.trim());
+        if (!senhaValida) {
+          setErro('Senha de acesso do Diretor incorreta. Por favor, verifique e tente novamente.');
+          return;
+        }
+      } finally {
+        setVerificando(false);
       }
     }
 

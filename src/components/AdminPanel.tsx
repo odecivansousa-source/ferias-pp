@@ -44,6 +44,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [salvando, setSalvando] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // Modal de Exclusão de Perfil (Seguro e Mobile-Friendly)
+  const [perfilParaExcluir, setPerfilParaExcluir] = useState<Perfil | null>(null);
+  const [excluindoPerfil, setExcluindoPerfil] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState<string | null>(null);
+
   // Edição de Equipes
   const [equipesState, setEquipesState] = useState<Equipe[]>(equipes);
 
@@ -85,23 +90,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setModalDiretorOpen(true);
   };
 
-  const handleDeletePerfil = async (p: Perfil) => {
-    if (p.papel === 'diretor') {
-      const diretoresCount = perfis.filter(x => x.papel === 'diretor').length;
+  const handleDeletePerfil = (p: Perfil) => {
+    if (p.papel === 'diretor' || (p.papel as string) === 'admin') {
+      const diretoresCount = perfis.filter(x => x.papel === 'diretor' || (x.papel as string) === 'admin').length;
       if (diretoresCount <= 1) {
-        alert('Não é possível excluir o único Diretor da Unidade. Você pode alterar seu nome e matrícula no botão "Dados do Diretor" ou "Editar".');
+        setErroExclusao('Não é possível excluir o único Diretor da Unidade. Você pode alterar seu nome e matrícula no botão "Cadastrar / Alterar Diretor" ou "Editar".');
         return;
       }
     }
+    setErroExclusao(null);
+    setPerfilParaExcluir(p);
+  };
 
-    const confirmar = confirm(`Deseja realmente EXCLUIR o cadastro:\n\nNome: ${p.nomeCompleto}\nMatrícula: ${p.matricula}\n\nEssa exclusão removerá o policial do quadro.`);
-    if (!confirmar) return;
-
+  const handleConfirmarExclusaoPerfil = async () => {
+    if (!perfilParaExcluir) return;
+    setExcluindoPerfil(true);
+    setErroExclusao(null);
     try {
-      await deletePerfil(p.id, p.matricula);
+      await deletePerfil(perfilParaExcluir.id, perfilParaExcluir.matricula);
+      setPerfilParaExcluir(null);
       onDataUpdated();
     } catch (err: any) {
-      alert(`Erro ao excluir: ${err.message}`);
+      setErroExclusao(`Erro ao excluir servidor: ${err.message || 'Tente novamente'}`);
+    } finally {
+      setExcluindoPerfil(false);
     }
   };
 
@@ -663,6 +675,75 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         diretorPerfil={perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin')}
         onDataUpdated={onDataUpdated}
       />
+
+      {/* Modal de Confirmação de Exclusão de Policial (100% Funcional no Celular e PC) */}
+      {perfilParaExcluir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3 text-rose-700">
+              <div className="p-3 bg-rose-100 rounded-2xl">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-base text-navy-950">Excluir Servidor?</h3>
+                <p className="text-xs text-slate-500">Gestão Funcional da Unidade</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Confirma a exclusão de <b>{perfilParaExcluir.nomeCompleto}</b> (Matrícula: <b>{perfilParaExcluir.matricula}</b>)?
+              <br /><br />
+              Essa exclusão removerá o registro do quadro funcional da unidade no banco de dados.
+            </p>
+
+            {erroExclusao && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs">
+                {erroExclusao}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={excluindoPerfil}
+                onClick={() => {
+                  setPerfilParaExcluir(null);
+                  setErroExclusao(null);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={excluindoPerfil}
+                onClick={handleConfirmarExclusaoPerfil}
+                className="px-4 py-2 rounded-xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 shadow-md transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{excluindoPerfil ? 'Excluindo...' : 'Sim, Excluir Cadastro'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alerta de Notificação / Validação de Exclusão */}
+      {erroExclusao && !perfilParaExcluir && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-md bg-white border border-rose-200 shadow-2xl rounded-2xl p-4 flex items-start gap-3 animate-slideUp">
+          <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 text-xs text-slate-700">
+            <p className="font-bold text-rose-900 mb-1">Aviso da Unidade</p>
+            <p>{erroExclusao}</p>
+          </div>
+          <button
+            onClick={() => setErroExclusao(null)}
+            className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 };

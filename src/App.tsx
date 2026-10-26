@@ -22,7 +22,7 @@ import {
 } from './services/dataService';
 import { MOCK_CONFIGURACAO, MOCK_EQUIPES, generateMockPoliciais } from './services/mockData';
 import { getSupabaseClient } from './services/supabase';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ShieldAlert } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTabState] = useState<string>('minhas-ferias');
@@ -51,8 +51,17 @@ export function App() {
 
   const [supabaseModalOpen, setSupabaseModalOpen] = useState<boolean>(false);
 
-  // Sincronização com o Hash da URL para permitir navegação direta e compatibilidade com GitHub Pages
+  const isDiretor = currentUser ? (currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') : false;
+
+  // Sincronização com o Hash da URL com verificação estrita de controle de acesso (RBAC)
   const setActiveTab = (tab: string) => {
+    const isUserDiretor = currentUser ? (currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin') : false;
+    const restrictedTabs = ['direcao', 'admin', 'relatorios'];
+    if (restrictedTabs.includes(tab) && !isUserDiretor) {
+      setActiveTabState('minhas-ferias');
+      window.location.hash = 'minhas-ferias';
+      return;
+    }
     setActiveTabState(tab);
     window.location.hash = tab;
   };
@@ -114,9 +123,10 @@ export function App() {
       setLoading(false);
     }, 1200);
 
-    // Sincronizar hash inicial da URL se já logado
+    // Sincronizar hash inicial da URL com validação de abas públicas
     const hash = window.location.hash.replace('#', '');
-    if (hash && ['calendario', 'minhas-ferias', 'direcao', 'admin', 'relatorios', 'regras'].includes(hash)) {
+    const publicTabs = ['calendario', 'minhas-ferias', 'regras'];
+    if (hash && publicTabs.includes(hash)) {
       setActiveTabState(hash);
     }
 
@@ -178,6 +188,17 @@ export function App() {
       }
     };
   }, [loadData]);
+
+  // Proteção estrita em tempo de execução: se o usuário logado não for diretor, bloqueia abas de gestão
+  useEffect(() => {
+    if (!currentUser) return;
+    const isUserDiretor = currentUser.papel === 'diretor' || (currentUser.papel as string) === 'admin';
+    const restrictedTabs = ['direcao', 'admin', 'relatorios'];
+    if (!isUserDiretor && restrictedTabs.includes(activeTab)) {
+      setActiveTabState('minhas-ferias');
+      window.location.hash = 'minhas-ferias';
+    }
+  }, [currentUser, activeTab]);
 
   const handleLoginSuccess = (user: Perfil) => {
     setCurrentUser(user);
@@ -274,32 +295,92 @@ export function App() {
         )}
 
         {activeTab === 'direcao' && (
-          <DirectorPanel
-            currentUser={currentUser}
-            solicitacoes={solicitacoes}
-            equipes={equipes}
-            perfis={perfis}
-            historico={historico}
-            onDataUpdated={loadData}
-          />
+          isDiretor ? (
+            <DirectorPanel
+              currentUser={currentUser}
+              solicitacoes={solicitacoes}
+              equipes={equipes}
+              perfis={perfis}
+              historico={historico}
+              onDataUpdated={loadData}
+            />
+          ) : (
+            <div className="max-w-md mx-auto my-12 bg-white p-6 rounded-3xl border border-rose-200 shadow-xl text-center space-y-4 animate-fadeIn">
+              <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-navy-950">Acesso Restrito à Direção</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Esta seção é restrita aos Diretores da Unidade Prisional. Seu perfil funcional não possui autorização para este módulo.
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab('minhas-ferias')}
+                className="w-full py-2.5 px-4 bg-navy-900 hover:bg-navy-800 text-white font-bold text-xs rounded-xl transition shadow"
+              >
+                Voltar para Minhas Férias
+              </button>
+            </div>
+          )
         )}
 
         {activeTab === 'admin' && (
-          <AdminPanel
-            perfis={perfis}
-            equipes={equipes}
-            config={config}
-            onDataUpdated={loadData}
-          />
+          isDiretor ? (
+            <AdminPanel
+              perfis={perfis}
+              equipes={equipes}
+              config={config}
+              onDataUpdated={loadData}
+            />
+          ) : (
+            <div className="max-w-md mx-auto my-12 bg-white p-6 rounded-3xl border border-rose-200 shadow-xl text-center space-y-4 animate-fadeIn">
+              <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-navy-950">Acesso Restrito à Direção</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Esta seção é restrita aos Diretores da Unidade Prisional. Seu perfil funcional não possui autorização para este módulo.
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab('minhas-ferias')}
+                className="w-full py-2.5 px-4 bg-navy-900 hover:bg-navy-800 text-white font-bold text-xs rounded-xl transition shadow"
+              >
+                Voltar para Minhas Férias
+              </button>
+            </div>
+          )
         )}
 
         {activeTab === 'relatorios' && (
-          <SapReportsTab
-            solicitacoes={solicitacoes}
-            equipes={equipes}
-            perfis={perfis}
-            anoAtual={config.anoExercicio}
-          />
+          isDiretor ? (
+            <SapReportsTab
+              solicitacoes={solicitacoes}
+              equipes={equipes}
+              perfis={perfis}
+              anoAtual={config.anoExercicio}
+            />
+          ) : (
+            <div className="max-w-md mx-auto my-12 bg-white p-6 rounded-3xl border border-rose-200 shadow-xl text-center space-y-4 animate-fadeIn">
+              <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-navy-950">Acesso Restrito à Direção</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Esta seção é restrita aos Diretores da Unidade Prisional. Seu perfil funcional não possui autorização para este módulo.
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab('minhas-ferias')}
+                className="w-full py-2.5 px-4 bg-navy-900 hover:bg-navy-800 text-white font-bold text-xs rounded-xl transition shadow"
+              >
+                Voltar para Minhas Férias
+              </button>
+            </div>
+          )
         )}
 
         {activeTab === 'regras' && (
