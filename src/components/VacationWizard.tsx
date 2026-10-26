@@ -19,7 +19,7 @@ import {
   analisarConflitosSolicitacao, 
   formatarDataBR 
 } from '../services/conflictEngine';
-import { createSolicitacao } from '../services/dataService';
+import { createSolicitacao, deleteSolicitacao } from '../services/dataService';
 
 interface VacationWizardProps {
   currentUser: Perfil;
@@ -103,6 +103,9 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
 
   // Minhas solicitações anteriores
   const minhasSolicitacoes = allSolicitacoes.filter(s => s.policialId === currentUser.id);
+  const solicitacaoDevolvidaOuRejeitada = minhasSolicitacoes.find(
+    s => s.status === 'DEVOLVIDA' || s.status === 'REJEITADA'
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +124,15 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
 
     setEnviando(true);
     try {
+      // Se havia uma solicitação anterior devolvida para ajuste ou rejeitada, remove para o policial enviar novamente
+      if (solicitacaoDevolvidaOuRejeitada) {
+        try {
+          await deleteSolicitacao(solicitacaoDevolvidaOuRejeitada.id);
+        } catch (e) {
+          console.warn('Erro ao remover requerimento anterior devolvido:', e);
+        }
+      }
+
       await createSolicitacao({
         policialId: currentUser.id,
         equipeId: userTeam.id,
@@ -137,7 +149,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
         })),
       });
 
-      setSucessoMsg('Solicitação de férias enviada com sucesso para análise da Direção da Unidade!');
+      setSucessoMsg('Novo requerimento de férias enviado com sucesso para análise da Direção da Unidade!');
       // Limpar formulário
       setPeriodo1({ ini: '', fim: '' });
       setPeriodo2({ ini: '', fim: '' });
@@ -202,12 +214,55 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
               </div>
             )}
 
-            {erroMsg && (
-              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-sm">Não foi possível enviar</p>
-                  <p className="mt-0.5">{erroMsg}</p>
+            {/* Notificação / Mensagem da Direção da Unidade para Reenvio */}
+            {solicitacaoDevolvidaOuRejeitada && !sucessoMsg && (
+              <div className={`p-5 rounded-3xl border text-xs space-y-3 animate-fadeIn shadow-sm ${
+                solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA'
+                  ? 'bg-blue-50/95 border-blue-300 text-blue-950'
+                  : 'bg-rose-50/95 border-rose-300 text-rose-950'
+              }`}>
+                <div className="flex items-start gap-3.5">
+                  <div className={`p-2.5 rounded-2xl flex-shrink-0 mt-0.5 ${
+                    solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-rose-100 text-rose-800'
+                  }`}>
+                    {solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA' ? (
+                      <RotateCcw className="w-5 h-5 text-blue-700" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-rose-700" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-black text-sm">
+                        {solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA'
+                          ? 'Mensagem da Direção: Requerimento Devolvido para Ajuste'
+                          : 'Mensagem da Direção: Requerimento Anterior Não Aprovado'}
+                      </p>
+                      <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                        solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA'
+                          ? 'bg-blue-200 text-blue-900 border border-blue-300'
+                          : 'bg-rose-200 text-rose-900 border border-rose-300'
+                      }`}>
+                        Novo Envio Necessário
+                      </span>
+                    </div>
+
+                    <p className="text-xs leading-relaxed">
+                      A Direção da Unidade analisou o seu requerimento anterior de{' '}
+                      <b>{solicitacaoDevolvidaOuRejeitada.periodos.map(p => `${formatarDataBR(p.dataInicio)} a ${formatarDataBR(p.dataFim)}`).join(', ')}</b>{' '}
+                      e encaminhou o seguinte parecer:
+                    </p>
+
+                    <div className="p-3.5 rounded-2xl bg-white/95 border border-slate-200 text-xs font-semibold shadow-inner">
+                      "{solicitacaoDevolvidaOuRejeitada.justificativaDecisao || 'Sem justificativa informada.'}"
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pt-1 text-[11px] font-bold text-slate-700">
+                      <span>👉 Selecione novas datas livres no formulário abaixo e clique em <b>"Submeter Solicitação de Férias"</b> para enviar novamente.</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

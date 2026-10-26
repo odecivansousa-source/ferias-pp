@@ -16,11 +16,12 @@ import {
   History,
   ShieldAlert,
   KeyRound,
-  Shield
+  Shield,
+  Trash2
 } from 'lucide-react';
 import { SolicitacaoFerias, Equipe, Perfil, HistoricoAuditoria } from '../types';
 import { formatarDataBR, analisarConflitosSolicitacao } from '../services/conflictEngine';
-import { aprovarSolicitacaoTransacional, decidirSolicitacao } from '../services/dataService';
+import { aprovarSolicitacaoTransacional, decidirSolicitacao, deleteSolicitacao } from '../services/dataService';
 import { DirectorModal } from './DirectorModal';
 
 interface DirectorPanelProps {
@@ -135,6 +136,20 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
       setMensagemFeedback({ tipo: 'erro', texto: `Erro na operação: ${err.message}` });
     } finally {
       setProcessando(false);
+    }
+  };
+
+  const handleExcluirSolicitacao = async (solId: string) => {
+    if (window.confirm('Confirma a exclusão deste requerimento do painel da direção?')) {
+      setProcessando(true);
+      try {
+        await deleteSolicitacao(solId);
+        onDataUpdated();
+      } catch (err: any) {
+        alert('Erro ao excluir requerimento: ' + err.message);
+      } finally {
+        setProcessando(false);
+      }
     }
   };
 
@@ -359,33 +374,49 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
                   )}
 
                   {/* Ações da Diretoria */}
-                  <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-slate-200/60">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
                     <button
                       type="button"
-                      onClick={() => handleOpenModal(sol, 'DEVOLVER')}
-                      className="text-xs font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                      onClick={() => handleExcluirSolicitacao(sol.id)}
+                      className="text-xs font-semibold text-slate-400 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                      title="Excluir requerimento do painel"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      Devolver p/ Correção
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Excluir do Painel</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenModal(sol, 'REJEITAR')}
-                      className="text-xs font-bold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Rejeitar
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {sol.status === 'PENDENTE' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenModal(sol, 'DEVOLVER')}
+                            className="text-xs font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Devolver p/ Correção
+                          </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenModal(sol, 'APROVAR')}
-                      className="text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1.5"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Homologar / Aprovar Férias
-                    </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenModal(sol, 'REJEITAR')}
+                            className="text-xs font-bold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            Rejeitar
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenModal(sol, 'APROVAR')}
+                            className="text-xs font-black text-white bg-emerald-600 hover:bg-emerald-700 px-4 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1.5"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            Homologar / Aprovar Férias
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

@@ -586,29 +586,9 @@ export async function aprovarSolicitacaoTransacional(
 ): Promise<{ sucesso: boolean; mensagem: string }> {
   const supabase = getSupabaseClient();
   const normalizedDecididaPor = normalizeUserId(decididaPorId);
+  const now = new Date().toISOString();
 
-  // Se Supabase estiver conectado, executa a Stored Procedure transacional no banco
-  if (supabase && isSupabaseConnected()) {
-    try {
-      const { data, error } = await supabase.rpc('fn_aprovar_solicitacao', {
-        p_solicitacao_id: solicitacaoId,
-        p_decidida_por: normalizedDecididaPor,
-        p_justificativa: justificativa,
-      });
-
-      if (error) {
-        return { sucesso: false, mensagem: `Erro no Supabase: ${error.message}` };
-      }
-
-      if (data && typeof data === 'object') {
-        return { sucesso: data.sucesso, mensagem: data.mensagem };
-      }
-    } catch (e: any) {
-      console.warn('Erro ao chamar RPC do Supabase, fallback para validação local:', e);
-    }
-  }
-
-  // Validação Local Robusta (Modo Demonstração / Offline)
+  // Validação local e de conflitos
   const solicitacoes = await getSolicitacoes();
   const target = solicitacoes.find(s => s.id === solicitacaoId);
   if (!target) {
@@ -630,12 +610,35 @@ export async function aprovarSolicitacaoTransacional(
     };
   }
 
-  // Se passou sem conflitos, aprova e grava histórico
+  // Atualizar diretamente no Supabase se conectado
+  if (supabase && isSupabaseConnected()) {
+    try {
+      const { error: sbErr } = await supabase
+        .from('solicitacoes_ferias')
+        .update({
+          status: 'APROVADA',
+          decidida_por: normalizedDecididaPor,
+          decidida_em: now,
+          justificativa_decisao: justificativa,
+          updated_at: now,
+        })
+        .eq('id', solicitacaoId);
+
+      if (sbErr) {
+        console.error('Erro ao aprovar no Supabase:', sbErr);
+        return { sucesso: false, mensagem: `Erro ao salvar no banco: ${sbErr.message}` };
+      }
+    } catch (e: any) {
+      console.warn('Erro ao atualizar aprovação no Supabase:', e);
+    }
+  }
+
+  // Se passou sem conflitos, aprova e grava histórico local
   target.status = 'APROVADA';
   target.decididaPor = normalizedDecididaPor;
-  target.decididaEm = new Date().toISOString();
+  target.decididaEm = now;
   target.justificativaDecisao = justificativa;
-  target.updatedAt = new Date().toISOString();
+  target.updatedAt = now;
 
   localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
 
@@ -651,10 +654,10 @@ export async function aprovarSolicitacaoTransacional(
     novoStatus: 'APROVADA',
     statusAnterior: 'PENDENTE',
     justificativa,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   });
 
-  return { sucesso: true, mensagem: 'Solicitação de férias aprovada com sucesso!' };
+  return { sucesso: true, mensagem: 'Solicitação de férias homologada com sucesso!' };
 }
 
 // Devolver para correção ou rejeitar
@@ -666,24 +669,32 @@ export async function decidirSolicitacao(
 ): Promise<{ sucesso: boolean; mensagem: string }> {
   const supabase = getSupabaseClient();
   const normalizedDecididaPor = normalizeUserId(decididaPorId);
+  const now = new Date().toISOString();
 
+  // 1. Atualizar diretamente no banco em nuvem Supabase
   if (supabase && isSupabaseConnected()) {
     try {
-      const { data, error } = await supabase.rpc('fn_decidir_solicitacao', {
-        p_solicitacao_id: solicitacaoId,
-        p_decidida_por: normalizedDecididaPor,
-        p_novo_status: novoStatus,
-        p_justificativa: justificativa,
-      });
-      if (!error && data) {
-        return { sucesso: data.sucesso, mensagem: data.mensagem };
+      const { error: sbErr } = await supabase
+        .from('solicitacoes_ferias')
+        .update({
+          status: novoStatus,
+          decidida_por: normalizedDecididaPor,
+          decidida_em: now,
+          justificativa_decisao: justificativa,
+          updated_at: now,
+        })
+        .eq('id', solicitacaoId);
+
+      if (sbErr) {
+        console.error('Erro ao atualizar status no Supabase:', sbErr);
+        return { sucesso: false, mensagem: `Erro ao salvar no banco: ${sbErr.message}` };
       }
-    } catch (e) {
-      console.warn('Erro ao chamar RPC fn_decidir_solicitacao:', e);
+    } catch (e: any) {
+      console.warn('Erro ao atualizar decisão no Supabase:', e);
     }
   }
 
-  // Local update
+  // 2. Local update
   const solicitacoes = await getSolicitacoes();
   const target = solicitacoes.find(s => s.id === solicitacaoId);
   if (!target) {
@@ -693,9 +704,9 @@ export async function decidirSolicitacao(
   const statusAnterior = target.status;
   target.status = novoStatus;
   target.decididaPor = normalizedDecididaPor;
-  target.decididaEm = new Date().toISOString();
+  target.decididaEm = now;
   target.justificativaDecisao = justificativa;
-  target.updatedAt = new Date().toISOString();
+  target.updatedAt = now;
 
   localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
 
@@ -710,10 +721,35 @@ export async function decidirSolicitacao(
     novoStatus,
     statusAnterior,
     justificativa,
-    createdAt: new Date().toISOString(),
+    createdAt: now,
   });
 
-  return { sucesso: true, mensagem: `Solicitação atualizada para ${novoStatus} com sucesso!` };
+  const textoAcao = novoStatus === 'DEVOLVIDA' ? 'devolvida para ajuste' : 'rejeitada';
+  return { 
+    sucesso: true, 
+    mensagem: `Mensagem enviada ao policial! A solicitação foi ${textoAcao} e removida da sua fila de pendências.` 
+  };
+}
+
+// Excluir solicitação e seus períodos associados
+export async function deleteSolicitacao(solicitacaoId: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConnected()) {
+    try {
+      await supabase.from('periodos_ferias').delete().eq('solicitacao_id', solicitacaoId);
+      const { error } = await supabase.from('solicitacoes_ferias').delete().eq('id', solicitacaoId);
+      if (error) {
+        console.error('Erro ao deletar solicitação no Supabase:', error);
+      }
+    } catch (e) {
+      console.warn('Erro ao excluir solicitação no Supabase:', e);
+    }
+  }
+
+  const solicitacoes = await getSolicitacoes();
+  const filtered = solicitacoes.filter(s => s.id !== solicitacaoId);
+  localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(filtered));
+  return true;
 }
 
 // -----------------------------------------------------------------------------
