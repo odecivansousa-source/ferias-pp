@@ -81,9 +81,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16 gap-2">
           {/* Identidade Visual */}
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer flex-shrink-0" onClick={() => setActiveTab('calendario')}>
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-navy-900 to-navy-950 flex items-center justify-center text-gold-400 shadow-md border border-navy-800 flex-shrink-0">
-              <span className="font-black text-lg sm:text-xl tracking-tighter">PP</span>
-            </div>
+            <img
+              src="./apple-touch-icon.png"
+              alt="Férias PP"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl shadow-md border border-gold-400/40 object-cover flex-shrink-0"
+            />
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <h1 className="font-black text-base sm:text-lg text-navy-950 tracking-tight leading-tight">FÉRIAS PP</h1>

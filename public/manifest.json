@@ -1,21 +1,25 @@
 {
   "short_name": "FÉRIAS PP",
   "name": "FÉRIAS PP — Sistema de Planejamento de Férias",
+  "description": "Sistema de Planejamento e Gestão de Férias dos Policiais Penais da Unidade Prisional",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "purpose": "any maskable"
     }
   ],
   "start_url": "./",
-  "background_color": "#0f243a",
-  "theme_color": "#0f243a",
+  "scope": "./",
+  "background_color": "#070e17",
+  "theme_color": "#0b192c",
   "display": "standalone",
   "orientation": "portrait"
 }

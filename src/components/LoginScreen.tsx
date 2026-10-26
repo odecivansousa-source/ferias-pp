@@ -139,9 +139,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ perfis, onLoginSuccess
         <div className="max-w-md w-full bg-white rounded-3xl border border-slate-200/90 shadow-xl overflow-hidden animate-fadeIn">
           {/* Header do Card */}
           <div className="bg-gradient-to-br from-navy-950 via-navy-900 to-navy-800 text-white p-6 sm:p-8 text-center relative overflow-hidden">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-navy-800 to-navy-900 border border-gold-500/40 text-gold-400 font-black text-2xl mx-auto flex items-center justify-center shadow-lg mb-3">
-              PP
-            </div>
+            <img
+              src="./apple-touch-icon.png"
+              alt="Férias PP"
+              className="w-20 h-20 rounded-3xl mx-auto shadow-2xl border-2 border-gold-400/40 mb-3 object-cover"
+            />
             <h1 className="font-black text-2xl tracking-tight text-white">FÉRIAS PP</h1>
             <p className="text-xs text-slate-300 mt-1 font-medium">
               Sistema de Planejamento e Controle de Férias

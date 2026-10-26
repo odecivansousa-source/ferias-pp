@@ -214,9 +214,11 @@ export function App() {
   if (loading && perfis.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center space-y-4">
-        <div className="w-16 h-16 rounded-3xl bg-navy-950 flex items-center justify-center shadow-xl border border-navy-800 animate-pulse">
-          <span className="font-black text-2xl text-gold-400">PP</span>
-        </div>
+        <img
+          src="./apple-touch-icon.png"
+          alt="Férias PP"
+          className="w-20 h-20 rounded-3xl shadow-xl border-2 border-gold-400/40 animate-pulse object-cover"
+        />
         <div>
           <h2 className="text-xl font-black text-navy-950">FÉRIAS PP</h2>
           <p className="text-xs text-slate-500 mt-1">Carregando quadro funcional da unidade...</p>
