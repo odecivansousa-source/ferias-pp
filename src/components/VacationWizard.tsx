@@ -313,7 +313,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                       return (
                         <div className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                           <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-600" />
-                          <span>Vaga já ocupada por {c?.nome} (Matrícula: {c?.matricula}) - Férias Aprovadas</span>
+                          <span>Período indisponível: Vaga preenchida por {c?.nome} (Matrícula: {c?.matricula})</span>
                         </div>
                       );
                     }
@@ -322,14 +322,14 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                       return (
                         <div className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                           <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600" />
-                          <span>Choque de período com {nomes} (Solicitação Pendente)</span>
+                          <span>Sobreposição de escala com {nomes} (Requerimento sob análise)</span>
                         </div>
                       );
                     }
                     return (
                       <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                         <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-                        <span>1º Período livre na sua equipe</span>
+                        <span>1º Período disponível na escala da equipe</span>
                       </div>
                     );
                   })()}
@@ -378,7 +378,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                         return (
                           <div className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                             <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-600" />
-                            <span>Vaga já ocupada por {c?.nome} (Matrícula: {c?.matricula}) - Férias Aprovadas</span>
+                            <span>Período indisponível: Vaga preenchida por {c?.nome} (Matrícula: {c?.matricula})</span>
                           </div>
                         );
                       }
@@ -387,14 +387,14 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                         return (
                           <div className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                             <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600" />
-                            <span>Choque de período com {nomes} (Solicitação Pendente)</span>
+                            <span>Sobreposição de escala com {nomes} (Requerimento sob análise)</span>
                           </div>
                         );
                       }
                       return (
                         <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                           <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-                          <span>2º Período livre na sua equipe</span>
+                          <span>2º Período disponível na escala da equipe</span>
                         </div>
                       );
                     })()}
@@ -444,7 +444,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                         return (
                           <div className="text-[11px] font-bold text-rose-800 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                             <ShieldAlert className="w-4 h-4 flex-shrink-0 text-rose-600" />
-                            <span>Vaga já ocupada por {c?.nome} (Matrícula: {c?.matricula}) - Férias Aprovadas</span>
+                            <span>Período indisponível: Vaga preenchida por {c?.nome} (Matrícula: {c?.matricula})</span>
                           </div>
                         );
                       }
@@ -453,14 +453,14 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                         return (
                           <div className="text-[11px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                             <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600" />
-                            <span>Choque de período com {nomes} (Solicitação Pendente)</span>
+                            <span>Sobreposição de escala com {nomes} (Requerimento sob análise)</span>
                           </div>
                         );
                       }
                       return (
                         <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 animate-fadeIn">
                           <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-                          <span>3º Período livre na sua equipe</span>
+                          <span>3º Período disponível na escala da equipe</span>
                         </div>
                       );
                     })()}
@@ -496,10 +496,10 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-black text-sm">
                           {analiseConflito.temAprovadas
-                            ? 'Vaga Já Ocupada na sua Equipe (Férias Aprovadas)'
+                            ? 'Período Indisponível (Férias Homologadas na Equipe)'
                             : analiseConflito.temPendentes
-                            ? 'Aviso de Choque de Período na Mesma Equipe'
-                            : 'Período 100% Disponível na sua Equipe'}
+                            ? 'Notificação de Sobreposição de Escala na Equipe'
+                            : 'Período Regularmente Disponível na Equipe'}
                         </p>
                         <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
                           analiseConflito.temAprovadas
@@ -508,7 +508,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                             ? 'bg-amber-200 text-amber-900 border border-amber-300'
                             : 'bg-emerald-200 text-emerald-900 border border-emerald-300'
                         }`}>
-                          Regra da Unidade: 1 policial por período
+                          Diretriz Operacional: Limite de 1 servidor por escala
                         </span>
                       </div>
 
@@ -520,7 +520,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                       {analiseConflito.colegasConflitantes.length > 0 && (
                         <div className="mt-3 space-y-2 pt-2 border-t border-slate-200/60">
                           <span className="text-[11px] font-black uppercase tracking-wider block text-slate-700">
-                            Policial(is) da sua equipe com datas conflitantes:
+                            Servidores da sua equipe com requerimentos no mesmo período:
                           </span>
                           <div className="grid grid-cols-1 gap-2">
                             {analiseConflito.colegasConflitantes.map((c, i) => (
@@ -546,7 +546,7 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                                   <span className={`text-[10px] font-black uppercase ${
                                     c.status === 'APROVADA' ? 'text-rose-700' : 'text-amber-700'
                                   }`}>
-                                    {c.status === 'APROVADA' ? 'Homologada / Aprovada pela Direção' : 'Solicitação Pendente (Em Análise)'}
+                                    {c.status === 'APROVADA' ? 'Férias Homologadas pela Direção' : 'Requerimento sob Análise da Direção'}
                                   </span>
                                 </div>
                               </div>
@@ -556,8 +556,8 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                       )}
 
                       {analiseConflito.sugestao && (
-                        <div className="mt-2 p-2.5 rounded-xl bg-white/90 border border-slate-200 text-[11px] font-medium leading-relaxed">
-                          💡 <b>Dica:</b> {analiseConflito.sugestao}
+                        <div className="mt-2 p-3 rounded-2xl bg-white/95 border border-slate-200 text-[11px] font-medium leading-relaxed shadow-sm">
+                          💡 <b>Recomendação Institucional:</b> {analiseConflito.sugestao}
                         </div>
                       )}
                     </div>
@@ -594,12 +594,12 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                 <Send className="w-4 h-4 text-gold-400" />
                 <span>
                   {enviando
-                    ? 'Enviando Solicitação...'
+                    ? 'Transmitindo Requerimento...'
                     : analiseConflito?.temAprovadas
-                    ? 'Período Indisponível (Vaga Já Ocupada)'
+                    ? 'Período Indisponível para Envio'
                     : analiseConflito?.temPendentes
-                    ? 'Enviar Solicitação (Ciente da Concorrência)'
-                    : 'Enviar Solicitação para a Direção'}
+                    ? 'Submeter Requerimento (Ciente da Concorrência de Escala)'
+                    : 'Submeter Solicitação de Férias'}
                 </span>
               </button>
             </form>

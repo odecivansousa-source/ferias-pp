@@ -304,14 +304,14 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
                       {analise && analise.temConflito && (
                         <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-900 border border-rose-300 px-2.5 py-1 rounded-full text-[10px] font-black">
                           <AlertTriangle className="w-3 h-3 text-rose-600" />
-                          Vagas Esgotadas (Aprovada)
+                          Vaga Preenchida (Homologada)
                         </span>
                       )}
 
                       {analise && !analise.temConflito && analise.temPendentes && (
                         <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 rounded-full text-[10px] font-black">
                           <AlertTriangle className="w-3 h-3 text-amber-600" />
-                          Concorrência na Equipe
+                          Concorrência de Escala
                         </span>
                       )}
 
@@ -341,13 +341,13 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
                   {/* Alerta de Conflito em Detalhe */}
                   {analise && analise.temConflito && (
                     <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-900 leading-relaxed">
-                      <b>Atenção da Direção (Vaga Ocupada):</b> {analise.mensagem}
+                      <b>Parecer Operacional (Vaga Homologada):</b> {analise.mensagem}
                     </div>
                   )}
 
                   {analise && !analise.temConflito && analise.temPendentes && (
                     <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
-                      <b>Atenção da Direção (Concorrência entre Colegas):</b> {analise.mensagem}
+                      <b>Parecer Operacional (Concorrência de Requerimentos):</b> {analise.mensagem}
                     </div>
                   )}
 

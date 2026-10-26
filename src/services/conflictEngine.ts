@@ -247,7 +247,7 @@ export function analisarConflitosSolicitacao(
   const temConcorrencia = colegasConflitantes.length > 0;
   const temConflito = temAprovadas; // Para travar aprovação formal de duas pessoas simultâneas
 
-  // Montar mensagem amigável e explicativa
+  // Montar mensagem institucional e formal
   let mensagem = '';
   let sugestao = '';
 
@@ -256,18 +256,17 @@ export function analisarConflitosSolicitacao(
     const nomes = Array.from(new Set(colegasAprovados.map(c => `${c.nome} (Matrícula: ${c.matricula})`))).join(', ');
     const dias = diasConflitantes.length;
 
-    mensagem = `Vaga já preenchida na ${equipe.nome} (limite de ${limite} policial por período). Já existem férias APROVADAS pela Direção para: ${nomes || 'outro servidor'}. O período escolhido possui ${dias > 0 ? dias : 'vários'} dia(s) com vagas esgotadas.`;
-    sugestao = `Como a unidade possui poucos policiais e só pode sair 1 por equipe, escolha outro mês ou período livre para conseguir a aprovação da Direção.`;
+    mensagem = `Período indisponível para fruição na ${equipe.nome}. Em cumprimento às diretrizes de segurança da unidade prisional (limite de ${limite} servidor em gozo de férias por escala), já constam férias homologadas pela Direção para: ${nomes || 'outro servidor'}. Constatados ${dias > 0 ? dias : 'múltiplos'} dias com o teto de afastamentos atingido.`;
+    sugestao = `Solicitamos a indicação de um período alternativo no cronograma anual para viabilizar o deferimento e a homologação pela Direção da Unidade.`;
   } else if (temPendentes) {
     const colegasPend = colegasConflitantes.filter(c => c.status === 'PENDENTE' || c.status === 'DEVOLVIDA');
-    const detalhesLista = Array.from(
-      new Set(colegasPend.map(c => `${c.nome} (Matrícula: ${c.matricula}, de ${formatarDataBR(c.periodoColegaInicio)} a ${formatarDataBR(c.periodoColegaFim)})`))
-    ).join('; ');
+    const qtdColegas = new Set(colegasPend.map(c => c.policialId)).size;
+    const textoQtd = qtdColegas === 1 ? '1 servidor com requerimento em tramitação' : `${qtdColegas} servidores com requerimentos em tramitação`;
 
-    mensagem = `Atenção: Na ${equipe.nome} (onde geralmente só pode sair ${limite} policial de férias por período), já existe solicitação de colega para estas mesmas datas: ${detalhesLista}. Haverá concorrência pela vaga.`;
-    sugestao = `Para ter suas férias confirmadas com maior agilidade e sem concorrência com o colega, você pode escolher outro período livre na sua equipe.`;
+    mensagem = `Constatada sobreposição de datas na ${equipe.nome}. Em conformidade com o plano de segurança e o efetivo da unidade prisional, o teto operacional é de ${limite} servidor por escala de plantão. Atualmente, há ${textoQtd} para o mesmo intervalo.`;
+    sugestao = `A deliberação das solicitações concorrentes caberá à Direção da Unidade com base nos critérios regimentais (antiguidade, escala e interesse do serviço). Para assegurar a homologação imediata sem concorrência, recomenda-se a seleção de datas livres no calendário.`;
   } else {
-    mensagem = `Período totalmente disponível na ${equipe.nome}. Nenhum outro policial da sua equipe solicitou estas datas (${limite} vaga liberada).`;
+    mensagem = `Período em plena conformidade com as diretrizes operacionais da ${equipe.nome}. Não constam registros de outros servidores para este intervalo (vaga regular disponível).`;
   }
 
   return {
