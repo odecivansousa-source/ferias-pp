@@ -16,8 +16,8 @@ export const DirectorModal: React.FC<DirectorModalProps> = ({
   diretorPerfil,
   onDataUpdated,
 }) => {
-  const [nomeCompleto, setNomeCompleto] = useState(diretorPerfil?.nomeCompleto || 'Diretor da Unidade');
-  const [matricula, setMatricula] = useState(diretorPerfil?.matricula || '123456');
+  const [nomeCompleto, setNomeCompleto] = useState(diretorPerfil?.nomeCompleto || 'PEDRO');
+  const [matricula, setMatricula] = useState(diretorPerfil?.matricula || '123');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -28,8 +28,8 @@ export const DirectorModal: React.FC<DirectorModalProps> = ({
   const prevOpenRef = React.useRef(false);
   React.useEffect(() => {
     if (isOpen && !prevOpenRef.current) {
-      setNomeCompleto(diretorPerfil?.nomeCompleto || 'Diretor da Unidade');
-      setMatricula(diretorPerfil?.matricula || '123456');
+      setNomeCompleto(diretorPerfil?.nomeCompleto || 'PEDRO');
+      setMatricula(diretorPerfil?.matricula || '123');
       setNovaSenha('');
       setConfirmarSenha('');
       setMostrarSenha(false);
@@ -140,7 +140,7 @@ export const DirectorModal: React.FC<DirectorModalProps> = ({
               required
               value={matricula}
               onChange={(e) => setMatricula(e.target.value.toUpperCase())}
-              placeholder="Ex: 123456 ou matrícula oficial"
+              placeholder="Ex: 123 ou matrícula oficial"
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:border-navy-900 rounded-xl outline-none font-mono font-bold text-navy-950"
             />
             <span className="text-[10px] text-slate-400 mt-1 block">

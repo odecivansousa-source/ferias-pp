@@ -41,8 +41,8 @@ export function normalizeUserId(id?: string): string {
 
 export const DEFAULT_FALLBACK_USER: Perfil = {
   id: '00000000-0000-0000-0000-000000000001',
-  matricula: '123456',
-  nomeCompleto: 'Diretor da Unidade',
+  matricula: '123',
+  nomeCompleto: 'PEDRO',
   equipeId: '11111111-1111-1111-1111-111111111111',
   papel: 'diretor',
   situacao: 'ativo',
@@ -59,6 +59,10 @@ function initLocalStorageMock() {
 
     if (!localStorage.getItem('ferias_pp_diretor_senha')) {
       localStorage.setItem('ferias_pp_diretor_senha', '131220');
+    }
+
+    if (localStorage.getItem('ferias_pp_logged_matricula') === '123456') {
+      localStorage.setItem('ferias_pp_logged_matricula', '123');
     }
 
     // Migration v6: Limpeza forçada de dados para garantir base zerada e sincronizada com Supabase
@@ -125,7 +129,7 @@ export async function resetDemoData(): Promise<void> {
       await supabase.from('periodos_ferias').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('historico_decisoes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('solicitacoes_ferias').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      await supabase.from('perfis').delete().neq('matricula', '123456');
+      await supabase.from('perfis').delete().neq('papel', 'diretor');
     } catch (e) {
       console.warn('Erro ao limpar Supabase no reset:', e);
     }

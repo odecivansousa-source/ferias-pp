@@ -170,7 +170,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleResetDemo = async () => {
-    if (confirm('Deseja realmente zerar todos os cadastros e recomeçar do zero? O sistema manterá apenas o Diretor da Unidade (matrícula 123456).')) {
+    if (confirm('Deseja realmente zerar todos os cadastros e recomeçar do zero? O sistema manterá apenas o Diretor da Unidade (matrícula 123).')) {
       await resetDemoData();
       alert('Quadro da unidade e solicitações zerados com sucesso!');
       onDataUpdated();
@@ -569,14 +569,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-navy-950 mb-1">
-                  {modalPerfil.papel === 'diretor' ? 'Matrícula do Diretor (Pode alterar a 123456) *' : 'Matrícula Funcional do Policial *'}
+                  {modalPerfil.papel === 'diretor' ? 'Matrícula do Diretor (Pode alterar a 123) *' : 'Matrícula Funcional do Policial *'}
                 </label>
                 <input
                   type="text"
                   required
                   value={modalPerfil.matricula || ''}
                   onChange={(e) => setModalPerfil({ ...modalPerfil, matricula: e.target.value })}
-                  placeholder={modalPerfil.papel === 'diretor' ? 'Ex: 123456 ou matrícula oficial' : 'Ex: 1001 ou PP-001'}
+                  placeholder={modalPerfil.papel === 'diretor' ? 'Ex: 123 ou matrícula oficial' : 'Ex: 1001 ou PP-001'}
                   className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold outline-none focus:ring-2 focus:ring-navy-800"
                 />
               </div>

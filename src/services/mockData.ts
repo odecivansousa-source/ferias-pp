@@ -46,11 +46,11 @@ export const MOCK_CONFIGURACAO: ConfiguracaoFerias = {
   mensagemAviso: 'Período oficial de submissão do plano de férias anual aberto pela Direção da Unidade.',
 };
 
-// Perfil inicial do Diretor da Unidade (Matrícula inicial 123456)
+// Perfil inicial do Diretor da Unidade (Matrícula inicial 123)
 export const INITIAL_DIRECTOR_PROFILE: Perfil = {
   id: '00000000-0000-0000-0000-000000000001',
-  matricula: '123456',
-  nomeCompleto: 'Diretor da Unidade',
+  matricula: '123',
+  nomeCompleto: 'PEDRO',
   equipeId: '11111111-1111-1111-1111-111111111111',
   papel: 'diretor',
   situacao: 'ativo',
