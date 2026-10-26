@@ -142,6 +142,7 @@ export function analisarConflitosSolicitacao(
     s.equipeId === equipe.id &&
     (!ignorarSolicitacaoId || s.id !== ignorarSolicitacaoId) &&
     (!policialAtualId || s.policialId !== policialAtualId) &&
+    s.status !== 'DEVOLVIDA' &&
     s.status !== 'REJEITADA' &&
     s.status !== 'CANCELADA' &&
     s.status !== 'RASCUNHO'

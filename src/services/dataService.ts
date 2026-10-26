@@ -689,26 +689,41 @@ export async function decidirSolicitacao(
         console.error('Erro ao atualizar status no Supabase:', sbErr);
         return { sucesso: false, mensagem: `Erro ao salvar no banco: ${sbErr.message}` };
       }
+
+      // Registra no histórico de decisões do Supabase
+      try {
+        await supabase.from('historico_decisoes').insert({
+          solicitacao_id: solicitacaoId,
+          responsavel_id: normalizedDecididaPor,
+          acao: novoStatus,
+          novo_status: novoStatus,
+          justificativa,
+        });
+      } catch (histErr) {
+        console.warn('Erro ao inserir historico no Supabase:', histErr);
+      }
     } catch (e: any) {
       console.warn('Erro ao atualizar decisão no Supabase:', e);
+      return { sucesso: false, mensagem: `Erro de comunicação com o banco: ${e.message}` };
     }
   }
 
-  // 2. Local update
-  const solicitacoes = await getSolicitacoes();
-  const target = solicitacoes.find(s => s.id === solicitacaoId);
-  if (!target) {
-    return { sucesso: false, mensagem: 'Solicitação não encontrada.' };
-  }
-
-  const statusAnterior = target.status;
-  target.status = novoStatus;
-  target.decididaPor = normalizedDecididaPor;
-  target.decididaEm = now;
-  target.justificativaDecisao = justificativa;
-  target.updatedAt = now;
-
-  localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(solicitacoes));
+  // 2. Atualizar cache local imediatamente
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SOLICITACOES);
+    if (raw) {
+      const list: SolicitacaoFerias[] = JSON.parse(raw);
+      const target = list.find(s => s.id === solicitacaoId);
+      if (target) {
+        target.status = novoStatus;
+        target.decididaPor = normalizedDecididaPor;
+        target.decididaEm = now;
+        target.justificativaDecisao = justificativa;
+        target.updatedAt = now;
+        localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(list));
+      }
+    }
+  } catch(e) {}
 
   const perfis = await getPerfis();
   const responsavel = perfis.find(p => p.id === normalizedDecididaPor);
@@ -719,12 +734,12 @@ export async function decidirSolicitacao(
     responsavelNome: responsavel?.nomeCompleto || 'Diretoria',
     acao: novoStatus,
     novoStatus,
-    statusAnterior,
+    statusAnterior: 'PENDENTE',
     justificativa,
     createdAt: now,
   });
 
-  const textoAcao = novoStatus === 'DEVOLVIDA' ? 'devolvida para ajuste' : 'rejeitada';
+  const textoAcao = novoStatus === 'DEVOLVIDA' ? 'devolvida para adequação' : 'rejeitada';
   return { 
     sucesso: true, 
     mensagem: `Mensagem enviada ao policial! A solicitação foi ${textoAcao} e removida da sua fila de pendências.` 
@@ -736,19 +751,30 @@ export async function deleteSolicitacao(solicitacaoId: string): Promise<boolean>
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
     try {
+      // Exclui dependências primeiro para evitar restrição de integridade referencial
+      await supabase.from('historico_decisoes').delete().eq('solicitacao_id', solicitacaoId);
       await supabase.from('periodos_ferias').delete().eq('solicitacao_id', solicitacaoId);
       const { error } = await supabase.from('solicitacoes_ferias').delete().eq('id', solicitacaoId);
       if (error) {
         console.error('Erro ao deletar solicitação no Supabase:', error);
+        throw new Error(`Falha ao excluir no banco: ${error.message}`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Erro ao excluir solicitação no Supabase:', e);
+      throw e;
     }
   }
 
-  const solicitacoes = await getSolicitacoes();
-  const filtered = solicitacoes.filter(s => s.id !== solicitacaoId);
-  localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(filtered));
+  // Atualiza cache local imediatamente sem re-buscar dados antigos
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SOLICITACOES);
+    if (raw) {
+      const list: SolicitacaoFerias[] = JSON.parse(raw);
+      const filtered = list.filter(s => s.id !== solicitacaoId);
+      localStorage.setItem(STORAGE_KEYS.SOLICITACOES, JSON.stringify(filtered));
+    }
+  } catch(e) {}
+
   return true;
 }
 

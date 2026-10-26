@@ -101,11 +101,31 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
       )
     : null;
 
-  // Minhas solicitações anteriores
-  const minhasSolicitacoes = allSolicitacoes.filter(s => s.policialId === currentUser.id);
+  const [modalDespachoAberto, setModalDespachoAberto] = useState(true);
+
+  // Minhas solicitações anteriores (identificação segura por ID ou Matrícula funcional)
+  const isMinhaSolicitacao = (s: SolicitacaoFerias) => {
+    if (s.policialId && currentUser.id && s.policialId === currentUser.id) return true;
+    const matS = (s.policial?.matricula || '').trim().toUpperCase();
+    const matUser = (currentUser.matricula || '').trim().toUpperCase();
+    if (matS && matUser && matS === matUser) return true;
+    return false;
+  };
+
+  const minhasSolicitacoes = allSolicitacoes.filter(isMinhaSolicitacao);
   const solicitacaoDevolvidaOuRejeitada = minhasSolicitacoes.find(
     s => s.status === 'DEVOLVIDA' || s.status === 'REJEITADA'
   );
+
+  const handleDispensarDevolvida = async () => {
+    if (!solicitacaoDevolvidaOuRejeitada) return;
+    try {
+      await deleteSolicitacao(solicitacaoDevolvidaOuRejeitada.id);
+      onSolicitacaoCreated();
+    } catch (e) {
+      console.warn('Erro ao dispensar solicitação devolvida:', e);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,6 +185,85 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fadeIn">
+      {/* Modal Despacho da Direção - Notificação Imediata para o Policial */}
+      {solicitacaoDevolvidaOuRejeitada && modalDespachoAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/75 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden">
+            <div className={`px-6 py-4 flex items-center justify-between text-white ${
+              solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA' ? 'bg-blue-700' : 'bg-rose-700'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-white/20 rounded-2xl">
+                  {solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA' ? (
+                    <RotateCcw className="w-5 h-5 text-white" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-white" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-black text-base">Despacho da Direção da Unidade</h3>
+                  <p className="text-xs text-white/80">Mensagem Oficial da Diretoria</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalDespachoAberto(false)}
+                className="text-white/80 hover:text-white p-1.5 rounded-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <span className="text-xs font-bold text-slate-600">
+                  Policial: <b className="text-navy-950">{currentUser.nomeCompleto}</b> ({currentUser.matricula})
+                </span>
+                <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full ${
+                  solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA'
+                    ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                    : 'bg-rose-100 text-rose-900 border border-rose-200'
+                }`}>
+                  {solicitacaoDevolvidaOuRejeitada.status === 'DEVOLVIDA'
+                    ? 'Devolvido para Adequação'
+                    : 'Requerimento Indeferido'}
+                </span>
+              </div>
+
+              <div className="text-xs text-slate-600 leading-relaxed">
+                A Direção da Unidade analisou seu plano de férias anterior referente a{' '}
+                <b>
+                  {solicitacaoDevolvidaOuRejeitada.periodos.map(
+                    p => `${formatarDataBR(p.dataInicio)} a ${formatarDataBR(p.dataFim)}`
+                  ).join(', ')}
+                </b>{' '}
+                e encaminhou o seguinte parecer:
+              </div>
+
+              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-navy-950 text-xs shadow-inner leading-relaxed">
+                <span className="font-bold text-amber-900 block mb-1">💬 Parecer / Justificativa da Direção:</span>
+                <p className="text-slate-800 text-xs font-semibold italic">
+                  "{solicitacaoDevolvidaOuRejeitada.justificativaDecisao || 'Sem justificativa informada.'}"
+                </p>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 leading-relaxed">
+                ℹ️ <b>Orientações:</b> O pedido anterior já foi liberado do painel da Direção. Escolha novas datas no formulário e clique em <b>"Submeter Solicitação de Férias"</b> para enviar novamente.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setModalDespachoAberto(false)}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-2xl font-black text-xs text-white bg-navy-950 hover:bg-navy-900 shadow-md transition"
+                >
+                  Entendido! Escolher Novas Datas Agora
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Banner de Boas-vindas e Resumo Funcional */}
       <div className="bg-gradient-to-r from-navy-950 via-navy-900 to-navy-800 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-navy-800 relative overflow-hidden">
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -259,8 +358,26 @@ export const VacationWizard: React.FC<VacationWizardProps> = ({
                       "{solicitacaoDevolvidaOuRejeitada.justificativaDecisao || 'Sem justificativa informada.'}"
                     </div>
 
-                    <div className="flex items-center gap-1.5 pt-1 text-[11px] font-bold text-slate-700">
-                      <span>👉 Selecione novas datas livres no formulário abaixo e clique em <b>"Submeter Solicitação de Férias"</b> para enviar novamente.</span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
+                      <span className="text-[11px] font-bold text-slate-700">
+                        👉 Selecione novas datas livres no formulário abaixo e clique em <b>"Submeter Solicitação de Férias"</b> para enviar novamente.
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setModalDespachoAberto(true)}
+                          className="text-[11px] font-bold text-blue-800 hover:underline"
+                        >
+                          Ver Parecer Completo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDispensarDevolvida}
+                          className="text-[11px] font-bold text-slate-500 hover:text-rose-700 underline"
+                        >
+                          Limpar este aviso
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

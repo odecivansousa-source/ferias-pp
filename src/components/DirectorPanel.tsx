@@ -139,17 +139,19 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
     }
   };
 
-  const handleExcluirSolicitacao = async (solId: string) => {
-    if (window.confirm('Confirma a exclusão deste requerimento do painel da direção?')) {
-      setProcessando(true);
-      try {
-        await deleteSolicitacao(solId);
-        onDataUpdated();
-      } catch (err: any) {
-        alert('Erro ao excluir requerimento: ' + err.message);
-      } finally {
-        setProcessando(false);
-      }
+  const [solicitacaoParaExcluir, setSolicitacaoParaExcluir] = useState<SolicitacaoFerias | null>(null);
+
+  const handleConfirmarExclusao = async () => {
+    if (!solicitacaoParaExcluir) return;
+    setProcessando(true);
+    try {
+      await deleteSolicitacao(solicitacaoParaExcluir.id);
+      setSolicitacaoParaExcluir(null);
+      onDataUpdated();
+    } catch (err: any) {
+      alert('Erro ao excluir requerimento: ' + (err?.message || 'Tente novamente'));
+    } finally {
+      setProcessando(false);
     }
   };
 
@@ -377,7 +379,7 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
                     <button
                       type="button"
-                      onClick={() => handleExcluirSolicitacao(sol.id)}
+                      onClick={() => setSolicitacaoParaExcluir(sol)}
                       className="text-xs font-semibold text-slate-400 hover:text-rose-700 hover:bg-rose-50 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1.5"
                       title="Excluir requerimento do painel"
                     >
@@ -542,6 +544,51 @@ export const DirectorPanel: React.FC<DirectorPanelProps> = ({
                 }`}
               >
                 {processando ? 'Processando Decisão...' : 'Confirmar Decisão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação de Exclusão (100% funcional em celular e PC) */}
+      {solicitacaoParaExcluir && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3 text-rose-700">
+              <div className="p-3 bg-rose-100 rounded-2xl">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-base text-navy-950">Excluir Requerimento?</h3>
+                <p className="text-xs text-slate-500">Ação da Direção da Unidade</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Confirma a exclusão definitiva do requerimento de férias de{' '}
+              <b>{solicitacaoParaExcluir.policial?.nomeCompleto || 'Policial Penal'}</b> (Matrícula:{' '}
+              <b>{solicitacaoParaExcluir.policial?.matricula || '-'}</b>)?
+              <br /><br />
+              O requerimento será apagado imediatamente do painel da Diretoria e do banco de dados, permitindo que o policial envie um novo plano de férias.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={processando}
+                onClick={() => setSolicitacaoParaExcluir(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={processando}
+                onClick={handleConfirmarExclusao}
+                className="px-4 py-2 rounded-xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 shadow-md transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{processando ? 'Excluindo...' : 'Sim, Excluir do Painel'}</span>
               </button>
             </div>
           </div>
