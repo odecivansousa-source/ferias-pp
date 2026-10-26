@@ -61,9 +61,6 @@ function initLocalStorageMock() {
       localStorage.setItem('ferias_pp_diretor_senha', '131220');
     }
 
-    if (localStorage.getItem('ferias_pp_logged_matricula') === '123456') {
-      localStorage.setItem('ferias_pp_logged_matricula', '123');
-    }
 
     // Migration v6: Limpeza forçada de dados para garantir base zerada e sincronizada com Supabase
     if (localStorage.getItem('ferias_pp_clean_slate_v6') !== 'true') {

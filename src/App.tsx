@@ -79,18 +79,20 @@ export function App() {
 
       const savedMat = localStorage.getItem('ferias_pp_logged_matricula');
       if (savedMat) {
-        const foundUser = validPerfis.find(p => p.matricula.toUpperCase() === savedMat.toUpperCase());
-        if (foundUser && foundUser.situacao !== 'inativo') {
-          setCurrentUser(prev => {
-            if (prev && prev.id === foundUser.id && prev.nomeCompleto === foundUser.nomeCompleto && prev.matricula === foundUser.matricula && prev.papel === foundUser.papel && prev.situacao === foundUser.situacao && prev.equipeId === foundUser.equipeId) {
-              return prev;
-            }
-            return foundUser;
-          });
-        } else {
-          // Servidor foi excluído ou inativado pela Direção: desloga imediatamente
-          localStorage.removeItem('ferias_pp_logged_matricula');
-          setCurrentUser(null);
+        const cleanSaved = savedMat.trim().toUpperCase();
+        const foundUser = validPerfis.find(p => p.matricula.trim().toUpperCase() === cleanSaved);
+        if (foundUser) {
+          if (foundUser.situacao === 'inativo') {
+            localStorage.removeItem('ferias_pp_logged_matricula');
+            setCurrentUser(null);
+          } else {
+            setCurrentUser(prev => {
+              if (prev && prev.id === foundUser.id && prev.nomeCompleto === foundUser.nomeCompleto && prev.matricula === foundUser.matricula && prev.papel === foundUser.papel && prev.situacao === foundUser.situacao && prev.equipeId === foundUser.equipeId) {
+                return prev;
+              }
+              return foundUser;
+            });
+          }
         }
       }
     } catch (e: any) {
@@ -150,12 +152,12 @@ export function App() {
       }
     }
 
-    // Heartbeat automático: sincroniza a cada 4 segundos garantindo tempo real mesmo se o celular suspender o websocket
+    // Heartbeat automático: sincroniza a cada 8 segundos garantindo tempo real mesmo se o celular suspender o websocket
     const pollTimer = setInterval(() => {
       if (document.visibilityState === 'visible') {
         loadData();
       }
-    }, 4000);
+    }, 8000);
 
     // Ao desbloquear o celular ou focar na aba
     const handleFocus = () => {
