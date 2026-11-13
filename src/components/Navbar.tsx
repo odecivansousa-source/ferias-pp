@@ -1,5 +1,5 @@
 import React from 'react';
-import { 
+import { Clock, 
   Calendar, 
   FileText, 
   ShieldCheck, 
@@ -42,6 +42,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const diretores = allPerfis.filter(p => p.papel === 'diretor' || (p.papel as string) === 'admin');
 
   const navItems = [
+    { id: 'escala', label: 'Escala de Plantão', icon: Clock, minRole: 'policial' },
     { id: 'calendario', label: 'Calendário de Férias', icon: Calendar, minRole: 'policial' },
     { id: 'minhas-ferias', label: 'Minhas Férias', icon: FileText, minRole: 'policial' },
     { id: 'direcao', label: 'Painel da Direção', icon: ShieldCheck, minRole: 'diretor' },

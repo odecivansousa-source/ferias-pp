@@ -1,3 +1,6 @@
+import { RegimePlantao } from './plantao';
+export * from './plantao';
+
 // Tipos do Domínio FÉRIAS PP
 
 export type PapelUsuario = 'policial' | 'diretor' | 'admin';
@@ -34,6 +37,8 @@ export interface Perfil {
   email?: string;
   telefone?: string;
   senha?: string; // Senha exclusiva da Direção da Unidade
+  regime?: RegimePlantao;
+  dataReferenciaPlantao?: string;
 }
 
 export interface PeriodoFerias {

@@ -8,8 +8,10 @@ import { SapReportsTab } from './components/SapReportsTab';
 import { RulesHelpTab } from './components/RulesHelpTab';
 import { SupabaseModal } from './components/SupabaseModal';
 import { LoginScreen } from './components/LoginScreen';
+import { ShiftDashboard } from './components/ShiftDashboard';
 
-import { Perfil, Equipe, SolicitacaoFerias, ConfiguracaoFerias, HistoricoAuditoria } from './types';
+import { Perfil, Equipe, SolicitacaoFerias, ConfiguracaoFerias, HistoricoAuditoria, AusenciaPlantao, PlantaoConfig } from './types';
+import { getAusencias, getPlantaoConfig, DEFAULT_PLANTAO_CONFIG } from './services/plantaoService';
 import { 
   getEquipes, 
   getPerfis, 
@@ -34,6 +36,8 @@ export function App() {
   const [config, setConfig] = useState<ConfiguracaoFerias>(MOCK_CONFIGURACAO);
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoFerias[]>([]);
   const [historico, setHistorico] = useState<HistoricoAuditoria[]>([]);
+  const [ausencias, setAusencias] = useState<AusenciaPlantao[]>([]);
+  const [plantaoConfig, setPlantaoConfig] = useState<PlantaoConfig>(DEFAULT_PLANTAO_CONFIG);
 
   // Carrega usuário autenticado salvo pela matrícula
   const [currentUser, setCurrentUser] = useState<Perfil | null>(() => {
@@ -69,7 +73,7 @@ export function App() {
   const loadData = useCallback(async () => {
     try {
       setLoadError(null);
-      const [eqs, perfs, cfg, sols, hist] = await Promise.all([
+      const [eqs, perfs, cfg, sols, hist, aus, pCfg] = await Promise.all([
         getEquipes(),
         getPerfis(),
         getConfiguracao(),
@@ -85,6 +89,8 @@ export function App() {
       setConfig(prev => JSON.stringify(prev) === JSON.stringify(cfg || MOCK_CONFIGURACAO) ? prev : (cfg || MOCK_CONFIGURACAO));
       setSolicitacoes(prev => JSON.stringify(prev) === JSON.stringify(sols) ? prev : (Array.isArray(sols) ? sols : []));
       setHistorico(prev => JSON.stringify(prev) === JSON.stringify(hist) ? prev : (Array.isArray(hist) ? hist : []));
+      setAusencias(prev => JSON.stringify(prev) === JSON.stringify(aus) ? prev : (Array.isArray(aus) ? aus : []));
+      setPlantaoConfig(prev => JSON.stringify(prev) === JSON.stringify(pCfg) ? prev : (pCfg || DEFAULT_PLANTAO_CONFIG));
 
       const savedMat = localStorage.getItem('ferias_pp_logged_matricula');
       if (savedMat) {
@@ -125,7 +131,7 @@ export function App() {
 
     // Sincronizar hash inicial da URL com validação de abas públicas
     const hash = window.location.hash.replace('#', '');
-    const publicTabs = ['calendario', 'minhas-ferias', 'regras'];
+    const publicTabs = ['escala', 'calendario', 'minhas-ferias', 'regras'];
     if (hash && publicTabs.includes(hash)) {
       setActiveTabState(hash);
     }
@@ -276,6 +282,18 @@ export function App() {
 
       {/* Conteúdo Principal */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        {activeTab === 'escala' && (
+          <ShiftDashboard
+            perfis={perfis}
+            equipes={equipes}
+            solicitacoes={solicitacoes}
+            ausencias={ausencias}
+            plantaoConfig={plantaoConfig}
+            currentUser={currentUser}
+            onDataUpdated={loadData}
+          />
+        )}
+
         {activeTab === 'calendario' && (
           <MasterCalendar
             solicitacoes={solicitacoes}
