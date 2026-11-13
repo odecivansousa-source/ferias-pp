@@ -181,6 +181,10 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
     setSalvandoRegime(true);
     try {
       await updatePerfilRegime(policialParaRegime.id, regimeSelecionado, dataRefSelecionada);
+      // Atualizar o objeto imediatamente na memória do componente
+      policialParaRegime.regime = regimeSelecionado;
+      policialParaRegime.dataReferenciaPlantao = dataRefSelecionada;
+
       setModalRegimeOpen(false);
       setPolicialParaRegime(null);
       onDataUpdated();
@@ -954,8 +958,8 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
 
             <div className="space-y-6">
               {equipes.map(eq => {
-                // Apenas policiais operacionais (o diretor não participa de escala de 24h)
-                const membros = perfis.filter(p => p.equipeId === eq.id && p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin');
+                // Todos os servidores ativos da equipe (incluindo Diretor identificado como ADM)
+                const membros = perfis.filter(p => p.equipeId === eq.id && p.situacao === 'ativo');
 
                 return (
                   <div key={eq.id} className="border border-slate-200 rounded-2xl overflow-hidden">
@@ -976,25 +980,42 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                         </div>
                       ) : (
                         membros.map(pol => {
+                          const isDir = pol.papel === 'diretor' || (pol.papel as string) === 'admin';
                           const temConfig = pol.regime && pol.dataReferenciaPlantao;
 
                           return (
                             <div key={pol.id} className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 transition">
                               <div>
-                                <div className="font-bold text-navy-950 text-xs">{pol.nomeCompleto}</div>
+                                <div className="font-bold text-navy-950 text-xs flex items-center gap-2">
+                                  <span>{pol.nomeCompleto}</span>
+                                  {isDir && (
+                                    <span className="bg-navy-950 text-gold-400 font-extrabold text-[9px] px-2 py-0.5 rounded-full border border-gold-500/30">
+                                      DIRETOR
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-[10px] text-slate-500 font-mono">
                                   Matrícula: {pol.matricula}
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-3">
-                                {temConfig ? (
+                                {isDir ? (
                                   <div className="text-right">
-                                    <span className="text-xs font-bold text-navy-900 bg-navy-50 px-2 py-0.5 rounded border border-navy-100">
+                                    <span className="text-xs font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
+                                      💼 ADM — Horário Comercial
+                                    </span>
+                                    <div className="text-[9px] text-slate-400 mt-0.5">
+                                      Expediente Administrativo
+                                    </div>
+                                  </div>
+                                ) : temConfig ? (
+                                  <div className="text-right">
+                                    <span className="text-xs font-bold text-emerald-900 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
                                       {REGIME_LABELS[pol.regime!]}
                                     </span>
-                                    <div className="text-[10px] text-slate-400 mt-0.5">
-                                      Início bloco: {formatarDataBR(pol.dataReferenciaPlantao!)}
+                                    <div className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                                      Início do bloco: <strong>{formatarDataBR(pol.dataReferenciaPlantao!)}</strong>
                                     </div>
                                   </div>
                                 ) : (
@@ -1003,13 +1024,15 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                                   </span>
                                 )}
 
-                                <button
-                                  onClick={() => handleAbrirConfigRegime(pol)}
-                                  className="text-xs font-bold text-navy-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                  <span>{temConfig ? 'Editar' : 'Configurar'}</span>
-                                </button>
+                                {!isDir && (
+                                  <button
+                                    onClick={() => handleAbrirConfigRegime(pol)}
+                                    className="text-xs font-bold text-navy-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-sm"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                    <span>{temConfig ? 'Editar' : 'Configurar'}</span>
+                                  </button>
+                                )}
                               </div>
                             </div>
                           );

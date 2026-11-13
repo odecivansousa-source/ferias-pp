@@ -195,15 +195,20 @@ export async function updatePerfilRegime(
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
     try {
-      const { error } = await supabase
-        .from('perfis')
-        .update({
-          regime,
-          data_referencia_plantao: dataReferencia,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', perfilId);
+      const isUuid = !!(perfilId && perfilId.length === 36 && perfilId.includes('-'));
+      let query = supabase.from('perfis').update({
+        regime,
+        data_referencia_plantao: dataReferencia,
+        updated_at: new Date().toISOString(),
+      });
 
+      if (isUuid) {
+        query = query.eq('id', perfilId);
+      } else {
+        query = query.or(`id.eq.${perfilId},matricula.eq.${perfilId}`);
+      }
+
+      const { error } = await query;
       if (error) {
         console.error('Erro ao salvar no Supabase:', error);
         throw new Error(error.message);

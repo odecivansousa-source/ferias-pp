@@ -291,6 +291,8 @@ export async function getPerfis(): Promise<Perfil[]> {
           email: d.email,
           telefone: d.telefone,
           senha: undefined, // Nunca exposto no cache público
+          regime: d.regime || undefined,
+          dataReferenciaPlantao: d.data_referencia_plantao || undefined,
         }));
         localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(perfisFormatados));
         return perfisFormatados;
@@ -308,6 +310,8 @@ export async function getPerfis(): Promise<Perfil[]> {
         ...p,
         papel: p.papel === 'admin' ? 'diretor' : p.papel,
         senha: undefined,
+        regime: p.regime || undefined,
+        dataReferenciaPlantao: p.dataReferenciaPlantao || undefined,
       }));
     }
   } catch(e) {}
@@ -408,6 +412,8 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
       situacao: perfilNormalized.situacao,
       email: perfilNormalized.email || null,
       telefone: perfilNormalized.telefone || null,
+      regime: perfilNormalized.regime || null,
+      data_referencia_plantao: perfilNormalized.dataReferenciaPlantao || null,
       updated_at: new Date().toISOString(),
     };
 
