@@ -70,7 +70,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       id: '',
       nomeCompleto: '',
       matricula: '',
-      equipeId: equipes[0]?.id || '',
+      equipeId: '11111111-1111-1111-1111-111111111111', // Equipe Alfa por padrão
       papel: 'policial',
       situacao: 'ativo',
       email: '',
@@ -135,7 +135,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         id: targetId || (modalPerfil.papel === 'diretor' ? '00000000-0000-0000-0000-000000000001' : 'pol-' + Date.now()),
         nomeCompleto: modalPerfil.nomeCompleto.trim(),
         matricula: modalPerfil.matricula.trim().toUpperCase(),
-        equipeId: modalPerfil.equipeId || equipes[0]?.id,
+        equipeId: modalPerfil.papel === 'diretor' ? '00000000-0000-0000-0000-000000000000' : (!modalPerfil.equipeId || modalPerfil.equipeId === '00000000-0000-0000-0000-000000000000' ? '11111111-1111-1111-1111-111111111111' : modalPerfil.equipeId),
         papel: (modalPerfil.papel as PapelUsuario) || 'policial',
         situacao: (modalPerfil.situacao as SituacaoFuncional) || 'ativo',
         email: modalPerfil.email,
@@ -611,7 +611,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   ) : (
                     <select
-                      value={modalPerfil.equipeId || ''}
+                      value={modalPerfil.equipeId || '11111111-1111-1111-1111-111111111111'}
                       onChange={(e) => setModalPerfil({ ...modalPerfil, equipeId: e.target.value })}
                       className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold outline-none"
                     >

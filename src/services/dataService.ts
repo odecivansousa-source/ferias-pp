@@ -289,7 +289,7 @@ export async function getPerfis(): Promise<Perfil[]> {
             authUserId: d.auth_user_id,
             matricula: d.matricula,
             nomeCompleto: d.nome_completo,
-            equipeId: isDir ? '00000000-0000-0000-0000-000000000000' : normalizeEquipeId(d.equipe_id),
+            equipeId: isDir ? '00000000-0000-0000-0000-000000000000' : (d.equipe_id === '00000000-0000-0000-0000-000000000000' ? '11111111-1111-1111-1111-111111111111' : normalizeEquipeId(d.equipe_id)),
           papel: d.papel,
           situacao: d.situacao,
           email: d.email,
@@ -415,11 +415,13 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
 
     if (isDirector) {
       perfilNormalized.equipeId = '00000000-0000-0000-0000-000000000000';
+    } else if (!perfilNormalized.equipeId || perfilNormalized.equipeId === '00000000-0000-0000-0000-000000000000' || perfilNormalized.equipeId === 'ADM') {
+      perfilNormalized.equipeId = '11111111-1111-1111-1111-111111111111'; // Policial penal pertence a equipe operacional (Alfa)
     }
     const payload: any = {
       matricula: mat,
       nome_completo: perfilNormalized.nomeCompleto,
-      equipe_id: isDirector ? '00000000-0000-0000-0000-000000000000' : normalizedEquipeId,
+      equipe_id: isDirector ? '00000000-0000-0000-0000-000000000000' : (normalizedEquipeId === '00000000-0000-0000-0000-000000000000' ? '11111111-1111-1111-1111-111111111111' : normalizedEquipeId),
       papel: perfilNormalized.papel,
       situacao: perfilNormalized.situacao,
       email: perfilNormalized.email || null,
