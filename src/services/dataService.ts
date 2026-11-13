@@ -20,6 +20,7 @@ const STORAGE_KEYS = {
 };
 
 export const EQUIPE_ID_MAP: Record<string, string> = {
+  'eq-adm': '00000000-0000-0000-0000-000000000000',
   'eq-1': '11111111-1111-1111-1111-111111111111',
   'eq-2': '22222222-2222-2222-2222-222222222222',
   'eq-3': '33333333-3333-3333-3333-333333333333',
@@ -28,6 +29,7 @@ export const EQUIPE_ID_MAP: Record<string, string> = {
 
 export function normalizeEquipeId(id?: string): string {
   if (!id) return '11111111-1111-1111-1111-111111111111';
+  if (id === '00000000-0000-0000-0000-000000000000' || id === 'eq-adm' || id === 'ADM') return '00000000-0000-0000-0000-000000000000';
   if (EQUIPE_ID_MAP[id]) return EQUIPE_ID_MAP[id];
   if (id.length === 36 && id.includes('-')) return id;
   return '11111111-1111-1111-1111-111111111111';
@@ -280,12 +282,14 @@ export async function getPerfis(): Promise<Perfil[]> {
         .order('nome_completo');
 
       if (!error && Array.isArray(data) && data.length > 0) {
-        const perfisFormatados: Perfil[] = data.map(d => ({
-          id: d.id,
-          authUserId: d.auth_user_id,
-          matricula: d.matricula,
-          nomeCompleto: d.nome_completo,
-          equipeId: normalizeEquipeId(d.equipe_id),
+        const perfisFormatados: Perfil[] = data.map(d => {
+          const isDir = d.papel === 'diretor' || d.papel === 'admin';
+          return {
+            id: d.id,
+            authUserId: d.auth_user_id,
+            matricula: d.matricula,
+            nomeCompleto: d.nome_completo,
+            equipeId: isDir ? '00000000-0000-0000-0000-000000000000' : normalizeEquipeId(d.equipe_id),
           papel: d.papel,
           situacao: d.situacao,
           email: d.email,
@@ -293,7 +297,8 @@ export async function getPerfis(): Promise<Perfil[]> {
           senha: undefined, // Nunca exposto no cache público
           regime: d.regime || undefined,
           dataReferenciaPlantao: d.data_referencia_plantao || undefined,
-        }));
+        };
+      });
         localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(perfisFormatados));
         return perfisFormatados;
       }
@@ -306,13 +311,17 @@ export async function getPerfis(): Promise<Perfil[]> {
   try {
     const list = JSON.parse(localStorage.getItem(STORAGE_KEYS.PERFIS) || '[]');
     if (Array.isArray(list) && list.length > 0) {
-      return list.map((p: any) => ({
-        ...p,
-        papel: p.papel === 'admin' ? 'diretor' : p.papel,
-        senha: undefined,
-        regime: p.regime || undefined,
-        dataReferenciaPlantao: p.dataReferenciaPlantao || undefined,
-      }));
+      return list.map((p: any) => {
+        const isDir = p.papel === 'diretor' || p.papel === 'admin';
+        return {
+          ...p,
+          papel: isDir ? 'diretor' : p.papel,
+          equipeId: isDir ? '00000000-0000-0000-0000-000000000000' : normalizeEquipeId(p.equipeId),
+          senha: undefined,
+          regime: p.regime || undefined,
+          dataReferenciaPlantao: p.dataReferenciaPlantao || undefined,
+        };
+      });
     }
   } catch(e) {}
   return generateMockPoliciais();
@@ -404,10 +413,13 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
       existingDirector = dir;
     }
 
+    if (isDirector) {
+      perfilNormalized.equipeId = '00000000-0000-0000-0000-000000000000';
+    }
     const payload: any = {
       matricula: mat,
       nome_completo: perfilNormalized.nomeCompleto,
-      equipe_id: normalizedEquipeId,
+      equipe_id: isDirector ? '00000000-0000-0000-0000-000000000000' : normalizedEquipeId,
       papel: perfilNormalized.papel,
       situacao: perfilNormalized.situacao,
       email: perfilNormalized.email || null,
@@ -893,7 +905,7 @@ export async function salvarDadosDiretor(nomeCompleto: string, matricula: string
     id: diretor?.id || '00000000-0000-0000-0000-000000000001',
     nomeCompleto: nomeCompleto.trim(),
     matricula: matricula.trim().toUpperCase(),
-    equipeId: diretor?.equipeId || '11111111-1111-1111-1111-111111111111',
+    equipeId: '00000000-0000-0000-0000-000000000000', // Diretor pertence ao ADM / Horário Comercial
     papel: 'diretor',
     situacao: 'ativo',
     email: diretor?.email || 'diretoria@unidade.local',

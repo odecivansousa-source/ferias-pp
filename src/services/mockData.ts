@@ -2,6 +2,14 @@ import { Equipe, Perfil, SolicitacaoFerias, ConfiguracaoFerias, HistoricoAuditor
 
 export const MOCK_EQUIPES: Equipe[] = [
   {
+    id: '00000000-0000-0000-0000-000000000000',
+    nome: 'ADM',
+    codigo: 'ADM',
+    limiteAfastamentosSimultaneos: 1,
+    efetivoMinimoRequerido: 1,
+    ativa: true,
+  },
+  {
     id: '11111111-1111-1111-1111-111111111111',
     nome: 'Equipe Alfa',
     codigo: 'EQ-01',
@@ -19,7 +27,7 @@ export const MOCK_EQUIPES: Equipe[] = [
   },
   {
     id: '33333333-3333-3333-3333-333333333333',
-    nome: 'Equipe Charle',
+    nome: 'Equipe Charlie',
     codigo: 'EQ-03',
     limiteAfastamentosSimultaneos: 1,
     efetivoMinimoRequerido: 22,
@@ -51,7 +59,7 @@ export const INITIAL_DIRECTOR_PROFILE: Perfil = {
   id: '00000000-0000-0000-0000-000000000001',
   matricula: '123',
   nomeCompleto: 'PEDRO',
-  equipeId: '11111111-1111-1111-1111-111111111111',
+  equipeId: '00000000-0000-0000-0000-000000000000',
   papel: 'diretor',
   situacao: 'ativo',
   email: 'diretoria@unidade.local',

@@ -257,7 +257,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 <option value="TODAS">Todas as Equipes</option>
                 {equipes.map(eq => (
-                  <option key={eq.id} value={eq.id}>{eq.nome}</option>
+                  <option key={eq.id} value={eq.id}>{eq.codigo === 'ADM' ? 'ADM (Expediente)' : eq.nome}</option>
                 ))}
               </select>
 
@@ -325,7 +325,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <tr key={p.id} className="hover:bg-slate-50/80 transition">
                       <td className="py-3 px-3 font-mono font-bold text-slate-700">{p.matricula}</td>
                       <td className="py-3 px-3 font-semibold text-navy-950">{p.nomeCompleto}</td>
-                      <td className="py-3 px-3 text-slate-600">{eq?.nome || '-'}</td>
+                      <td className="py-3 px-3">
+                        {(p.papel === 'diretor' || (p.papel as string) === 'admin') ? (
+                          <span className="font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg text-xs">
+                            ADM
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">{eq?.nome || '-'}</span>
+                        )}
+                      </td>
                       <td className="py-3 px-3">
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                           (p.papel === 'diretor' || (p.papel as string) === 'admin') 
@@ -596,15 +604,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-navy-950 mb-1">Equipe de Lotação</label>
-                  <select
-                    value={modalPerfil.equipeId || ''}
-                    onChange={(e) => setModalPerfil({ ...modalPerfil, equipeId: e.target.value })}
-                    className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold outline-none"
-                  >
-                    {equipes.map(eq => (
-                      <option key={eq.id} value={eq.id}>{eq.nome}</option>
-                    ))}
-                  </select>
+                  {modalPerfil.papel === 'diretor' ? (
+                    <div className="w-full text-xs p-2.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl font-bold flex items-center justify-between">
+                      <span>ADM (Expediente Administrativo)</span>
+                      <span className="text-[10px] text-blue-600 bg-blue-100 px-2 py-0.5 rounded font-mono">Direção Geral</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={modalPerfil.equipeId || ''}
+                      onChange={(e) => setModalPerfil({ ...modalPerfil, equipeId: e.target.value })}
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold outline-none"
+                    >
+                      {equipes.filter(e => e.id !== '00000000-0000-0000-0000-000000000000' && e.codigo !== 'ADM' && e.nome !== 'ADM').map(eq => (
+                        <option key={eq.id} value={eq.id}>{eq.nome}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>

@@ -190,7 +190,8 @@ export async function updatePlantaoConfig(config: PlantaoConfig): Promise<void> 
 export async function updatePerfilRegime(
   perfilId: string,
   regime: RegimePlantao,
-  dataReferencia: string
+  dataReferencia: string,
+  matricula?: string
 ): Promise<void> {
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
@@ -204,8 +205,10 @@ export async function updatePerfilRegime(
 
       if (isUuid) {
         query = query.eq('id', perfilId);
+      } else if (matricula) {
+        query = query.eq('matricula', matricula);
       } else {
-        query = query.or(`id.eq.${perfilId},matricula.eq.${perfilId}`);
+        query = query.eq('matricula', perfilId);
       }
 
       const { error } = await query;
@@ -225,7 +228,7 @@ export async function updatePerfilRegime(
     if (raw) {
       const perfis = JSON.parse(raw);
       if (Array.isArray(perfis)) {
-        const idx = perfis.findIndex(p => p.id === perfilId);
+        const idx = perfis.findIndex((p: any) => p.id === perfilId || (matricula && p.matricula === matricula));
         if (idx >= 0) {
           perfis[idx] = {
             ...perfis[idx],

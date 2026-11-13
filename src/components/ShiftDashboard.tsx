@@ -49,6 +49,7 @@ interface ShiftDashboardProps {
 }
 
 export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
+
   perfis,
   equipes,
   solicitacoes,
@@ -93,6 +94,11 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
 
   // Modal para detalhes de um dia no calendário
   const [diaDetalheModal, setDiaDetalheModal] = useState<string | null>(null);
+
+  // Equipes de plantão operacional 24h (exclui ADM/Expediente)
+  const equipesOperacionais = useMemo(() => {
+    return equipes.filter(e => e.codigo !== 'ADM' && e.id !== '00000000-0000-0000-0000-000000000000' && e.nome !== 'ADM');
+  }, [equipes]);
 
   // Cálculo do plantão para a data selecionada
   const plantoesDia = useMemo(() => {
@@ -180,7 +186,7 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
     if (!policialParaRegime) return;
     setSalvandoRegime(true);
     try {
-      await updatePerfilRegime(policialParaRegime.id, regimeSelecionado, dataRefSelecionada);
+      await updatePerfilRegime(policialParaRegime.id, regimeSelecionado, dataRefSelecionada, policialParaRegime.matricula);
       // Atualizar o objeto imediatamente na memória do componente
       policialParaRegime.regime = regimeSelecionado;
       policialParaRegime.dataReferenciaPlantao = dataRefSelecionada;
@@ -567,7 +573,7 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {equipes.map(eq => {
+                  {equipesOperacionais.map(eq => {
                     return (
                       <tr key={eq.id} className="hover:bg-slate-50/60">
                         <td className="py-2.5 px-3 font-bold text-navy-950 flex items-center gap-2">
@@ -957,9 +963,44 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
             </div>
 
             <div className="space-y-6">
-              {equipes.map(eq => {
-                // Todos os servidores ativos da equipe (incluindo Diretor identificado como ADM)
-                const membros = perfis.filter(p => p.equipeId === eq.id && p.situacao === 'ativo');
+              {/* Card Exclusivo do Diretor / ADM */}
+              {(() => {
+                const diretor = perfis.find(p => p.papel === 'diretor' || (p.papel as string) === 'admin');
+                if (!diretor) return null;
+                return (
+                  <div className="border border-blue-200 bg-blue-50/40 rounded-2xl overflow-hidden shadow-sm">
+                    <div className="bg-gradient-to-r from-blue-900 to-navy-900 text-white px-4 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-gold-400" />
+                        <h4 className="font-black text-sm">Direção Geral — ADM</h4>
+                        <span className="text-[11px] text-blue-200 font-medium">(Horário Comercial / Expediente Administrativo)</span>
+                      </div>
+                    </div>
+                    <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="font-black text-navy-950 text-sm flex items-center gap-2">
+                          <span>{diretor.nomeCompleto}</span>
+                          <span className="bg-navy-950 text-gold-400 font-black text-[10px] px-2.5 py-0.5 rounded-full border border-gold-500/30">
+                            DIRETOR
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 font-mono mt-0.5">
+                          Matrícula: {diretor.matricula}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-blue-950 bg-blue-100 border border-blue-300 px-3 py-1.5 rounded-xl shadow-xs inline-flex items-center gap-1.5">
+                          💼 ADM — Expediente Comercial (Fora da escala 24h)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {equipesOperacionais.map(eq => {
+                // Policiais ativos pertencentes a esta equipe operacional (exclui Diretor)
+                const membros = perfis.filter(p => p.equipeId === eq.id && p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin');
 
                 return (
                   <div key={eq.id} className="border border-slate-200 rounded-2xl overflow-hidden">
