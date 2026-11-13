@@ -113,7 +113,8 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
 
   // Policiais sem regime configurado
   const policiaisSemRegime = useMemo(() => {
-    return perfis.filter(p => p.situacao === 'ativo' && (!p.regime || !p.dataReferenciaPlantao));
+    // Diretor não entra na cobrança de escala de plantão
+    return perfis.filter(p => p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin' && (!p.regime || !p.dataReferenciaPlantao));
   }, [perfis]);
 
   // Navegar dia anterior / próximo
@@ -953,7 +954,8 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
 
             <div className="space-y-6">
               {equipes.map(eq => {
-                const membros = perfis.filter(p => p.equipeId === eq.id && p.situacao === 'ativo');
+                // Apenas policiais operacionais (o diretor não participa de escala de 24h)
+                const membros = perfis.filter(p => p.equipeId === eq.id && p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin');
 
                 return (
                   <div key={eq.id} className="border border-slate-200 rounded-2xl overflow-hidden">
@@ -1130,7 +1132,7 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-navy-900"
                 >
                   <option value="">Selecione o policial...</option>
-                  {perfis.map(p => (
+                  {perfis.filter(p => p.papel !== 'diretor' && (p.papel as string) !== 'admin').map(p => (
                     <option key={p.id} value={p.id}>
                       {p.nomeCompleto} ({p.matricula}) — {getNomeEquipe(p.equipeId)}
                     </option>

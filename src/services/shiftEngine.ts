@@ -98,7 +98,8 @@ export function calcularPlantoesDia(
   efetivoAlerta: number = 4
 ): PlantaoEquipeDiario[] {
   // Apenas policiais ativos e com função policial/diretor com escala
-  const policiaisAtivos = perfis.filter(p => p.situacao === 'ativo');
+  // Diretor trabalha em horário comercial/expediente, não participa da escala de plantão 24h
+  const policiaisAtivos = perfis.filter(p => p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin');
 
   return equipes.map(equipe => {
     const membrosEquipe = policiaisAtivos.filter(p => p.equipeId === equipe.id);
