@@ -79,6 +79,8 @@ export function App() {
         getConfiguracao(),
         getSolicitacoes(),
         getHistoricoAuditoria(),
+        getAusencias(),
+        getPlantaoConfig(),
       ]);
 
       const validPerfis = Array.isArray(perfs) && perfs.length > 0 ? perfs : generateMockPoliciais();
