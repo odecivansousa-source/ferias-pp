@@ -97,11 +97,43 @@ export function calcularPlantoesDia(
   efetivoMinimo: number = 5,
   efetivoAlerta: number = 4
 ): PlantaoEquipeDiario[] {
-  // Apenas policiais ativos e com função policial/diretor com escala
-  // Diretor trabalha em horário comercial/expediente, não participa da escala de plantão 24h
-  const policiaisAtivos = perfis.filter(p => p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin');
+  // Apenas policiais ativos e operacionais da escala 24h
+  const policiaisAtivos = perfis.filter(
+    p => p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin'
+  );
 
-  return equipes.map(equipe => {
+  // Diretor da Unidade (Expediente Administrativo / Horário Comercial: Segunda a Sexta)
+  const diretor = perfis.find(
+    p => p.situacao === 'ativo' && (p.papel === 'diretor' || (p.papel as string) === 'admin')
+  );
+
+  // Verifica se a dataAlvo é dia de semana útil (Segunda a Sexta = 1 a 5)
+  const dAlvo = new Date(`${dataAlvo}T12:00:00Z`);
+  const diaSemana = dAlvo.getUTCDay(); // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
+  const ehDiaUtil = diaSemana >= 1 && diaSemana <= 5;
+
+  // Checa se o Diretor está presente hoje no expediente diurno (sem férias ou atestado)
+  let diretorPresenteHoje = false;
+  let diretorAusenciaMotivo: string | undefined = undefined;
+
+  if (diretor && ehDiaUtil) {
+    const emFerias = verificarFeriasAprovadas(diretor.id, dataAlvo, solicitacoes);
+    const outraAusencia = verificarAusenciaCadastrada(diretor.id, dataAlvo, ausencias);
+    if (emFerias) {
+      diretorAusenciaMotivo = 'FÉRIAS';
+    } else if (outraAusencia) {
+      diretorAusenciaMotivo = TIPO_AUSENCIA_LABELS[outraAusencia.tipo] || 'AFASTADO';
+    } else {
+      diretorPresenteHoje = true;
+    }
+  }
+
+  // Filtrar equipes operacionais (exclui ADM para focar nas 4 equipes operacionais)
+  const equipesOperacionais = equipes.filter(
+    e => e.id !== '00000000-0000-0000-0000-000000000000' && e.codigo !== 'ADM' && e.nome !== 'ADM'
+  );
+
+  return equipesOperacionais.map(equipe => {
     const membrosEquipe = policiaisAtivos.filter(p => p.equipeId === equipe.id);
 
     const policiaisDetalhe: PolicialPlantao[] = membrosEquipe.map(pol => {
@@ -133,6 +165,7 @@ export function calcularPlantoesDia(
         ausente,
         motivoAusencia,
         presente: escalado && !ausente,
+        isDiretor: false,
       };
     });
 
@@ -140,11 +173,37 @@ export function calcularPlantoesDia(
     const ausentes = escalados.filter(p => p.ausente);
     const efetivoReal = escalados.length - ausentes.length;
 
+    // Se esta equipe tem policiais de plantão hoje e for dia útil (Seg a Sex):
+    // O Diretor cumpre expediente na unidade no horário comercial e conta no efetivo diurno!
+    const equipeAtivaHoje = escalados.length > 0;
+    const incluiDiretor = equipeAtivaHoje && ehDiaUtil && !!diretor;
+    const diretorSoma = incluiDiretor && diretorPresenteHoje ? 1 : 0;
+    const efetivoDiurno = efetivoReal + diretorSoma;
+
+    if (incluiDiretor && diretor) {
+      policiaisDetalhe.push({
+        id: diretor.id,
+        nome: diretor.nomeCompleto,
+        matricula: diretor.matricula,
+        equipeId: equipe.id,
+        regime: undefined,
+        dataReferencia: undefined,
+        escalado: true,
+        ausente: !diretorPresenteHoje,
+        motivoAusencia: diretorAusenciaMotivo,
+        presente: diretorPresenteHoje,
+        isDiretor: true,
+      });
+    }
+
+    // Avaliação do status: durante o dia em dias úteis, o sistema conta com o Diretor presente!
+    const efetivoParaStatus = ehDiaUtil ? efetivoDiurno : efetivoReal;
+
     let status: 'OK' | 'ALERTA' | 'CRITICO' = 'OK';
     if (escalados.length > 0) {
-      if (efetivoReal < efetivoAlerta) {
+      if (efetivoParaStatus < efetivoAlerta) {
         status = 'CRITICO';
-      } else if (efetivoReal < efetivoMinimo) {
+      } else if (efetivoParaStatus < efetivoMinimo) {
         status = 'ALERTA';
       }
     }
@@ -154,9 +213,11 @@ export function calcularPlantoesDia(
       equipeNome: equipe.nome,
       equipeCodigo: equipe.codigo,
       totalPoliciasEquipe: membrosEquipe.length,
-      totalEscalados: escalados.length,
-      totalAusentes: ausentes.length,
+      totalEscalados: escalados.length + (incluiDiretor ? 1 : 0),
+      totalAusentes: ausentes.length + (incluiDiretor && !diretorPresenteHoje ? 1 : 0),
       efetivoReal,
+      efetivoDiurno,
+      diretorPresenteDiurno: incluiDiretor && diretorPresenteHoje,
       status,
       policiais: policiaisDetalhe,
     };

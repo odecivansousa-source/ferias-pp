@@ -39,6 +39,7 @@ export interface PolicialPlantao {
   ausente: boolean; // Se está em férias, atestado, licença, etc.
   motivoAusencia?: string; // 'FÉRIAS', 'ATESTADO', 'LICENÇA', etc.
   presente: boolean; // escalado && !ausente
+  isDiretor?: boolean; // Se é o Diretor em expediente comercial
 }
 
 export interface PlantaoEquipeDiario {
@@ -48,7 +49,9 @@ export interface PlantaoEquipeDiario {
   totalPoliciasEquipe: number;
   totalEscalados: number; // Quantos policiais desta equipe deveriam trabalhar hoje
   totalAusentes: number; // Quantos escalados estão ausentes
-  efetivoReal: number; // totalEscalados - totalAusentes
+  efetivoReal: number; // Efetivo operacional 24h
+  efetivoDiurno: number; // Efetivo total durante o dia (conta Diretor de seg a sex)
+  diretorPresenteDiurno: boolean; // Se o Diretor está presente na unidade neste dia (Seg a Sex)
   status: 'OK' | 'ALERTA' | 'CRITICO';
   policiais: PolicialPlantao[];
 }

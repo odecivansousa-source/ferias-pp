@@ -476,18 +476,26 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                       </div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase">Presentes</div>
+                      <div className="text-[10px] text-slate-400 font-bold uppercase">
+                        {plantao.diretorPresenteDiurno ? 'Efetivo Diurno' : 'Presentes'}
+                      </div>
                       <div className={`text-lg font-black ${
-                        plantao.efetivoReal < plantaoConfig.efetivoAlerta
+                        (plantao.diretorPresenteDiurno ? plantao.efetivoDiurno : plantao.efetivoReal) < plantaoConfig.efetivoAlerta
                           ? 'text-red-600'
-                          : plantao.efetivoReal < plantaoConfig.efetivoMinimo
+                          : (plantao.diretorPresenteDiurno ? plantao.efetivoDiurno : plantao.efetivoReal) < plantaoConfig.efetivoMinimo
                           ? 'text-amber-600'
                           : 'text-emerald-600'
                       }`}>
-                        {plantao.efetivoReal}
+                        {plantao.diretorPresenteDiurno ? plantao.efetivoDiurno : plantao.efetivoReal}
                       </div>
                     </div>
                   </div>
+                  {plantao.diretorPresenteDiurno && (
+                    <div className="text-[10px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-xl mb-2 flex items-center justify-between">
+                      <span className="flex items-center gap-1">🏢 Inclui Diretor no Diurno (Seg a Sex)</span>
+                      <span className="font-mono text-blue-700">Noturno: {plantao.efetivoReal} pol.</span>
+                    </div>
+                  )}
 
                   <div className="text-[11px] text-slate-500 mb-2">
                     Meta mínima: <strong>{plantaoConfig.efetivoMinimo} policiais</strong>
@@ -508,15 +516,24 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                         <div
                           key={pol.id}
                           className={`flex items-center justify-between text-xs p-1.5 rounded-lg border ${
-                            pol.ausente
+                            pol.isDiretor
+                              ? 'bg-blue-50/90 border-blue-200 text-blue-950 font-semibold'
+                              : pol.ausente
                               ? 'bg-rose-50 border-rose-200 text-rose-800'
                               : 'bg-slate-50 border-slate-200 text-slate-700'
                           }`}
                         >
                           <div className="truncate min-w-0 pr-1">
-                            <span className="font-bold truncate">{pol.nome}</span>
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="font-bold truncate">{pol.nome}</span>
+                              {pol.isDiretor && (
+                                <span className="bg-navy-950 text-gold-400 font-black text-[8px] px-1.5 py-0.2 rounded">
+                                  DIRETOR
+                                </span>
+                              )}
+                            </div>
                             <span className="text-[10px] text-slate-400 block font-mono">
-                              Mat: {pol.matricula} • {pol.regime || 'S/ Regime'}
+                              Mat: {pol.matricula} • {pol.isDiretor ? 'Expediente Comercial (Seg a Sex)' : (pol.regime || 'S/ Regime')}
                             </span>
                           </div>
 
@@ -525,9 +542,13 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                               <span className="text-[9px] font-black uppercase bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded">
                                 {pol.motivoAusencia || 'AUSENTE'}
                               </span>
+                            ) : pol.isDiretor ? (
+                              <span className="text-[9px] font-black text-blue-800 bg-blue-100 border border-blue-300 px-1.5 py-0.5 rounded">
+                                PRESENTE (DIURNO)
+                              </span>
                             ) : (
                               <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                                PRESENTE
+                                PRESENTE (24H)
                               </span>
                             )}
                           </div>
@@ -594,7 +615,9 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                             plantaoConfig.efetivoAlerta
                           )[0];
 
-                          const efetivo = resDia?.efetivoReal ?? 0;
+                          const dDia = new Date(`${dia}T12:00:00Z`);
+                          const ehDiaSemana = dDia.getUTCDay() >= 1 && dDia.getUTCDay() <= 5;
+                          const efetivo = ehDiaSemana ? (resDia?.efetivoDiurno ?? 0) : (resDia?.efetivoReal ?? 0);
                           const totalEsc = resDia?.totalEscalados ?? 0;
 
                           let badgeClass = 'bg-slate-100 text-slate-500';
@@ -834,7 +857,11 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                           }`}
                         >
                           <span className="truncate">{eq.equipeNome}</span>
-                          <span className="font-mono">{eq.efetivoReal}p</span>
+                          <span className="font-mono">{(() => {
+                            const dCal = new Date(`${dia.dataStr}T12:00:00Z`);
+                            const ehUtil = dCal.getUTCDay() >= 1 && dCal.getUTCDay() <= 5;
+                            return ehUtil ? eq.efetivoDiurno : eq.efetivoReal;
+                          })()}p</span>
                         </div>
                       );
                     })}
