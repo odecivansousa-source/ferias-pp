@@ -195,7 +195,7 @@ export async function updatePerfilRegime(
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
     try {
-      await supabase
+      const { error } = await supabase
         .from('perfis')
         .update({
           regime,
@@ -203,22 +203,33 @@ export async function updatePerfilRegime(
           updated_at: new Date().toISOString(),
         })
         .eq('id', perfilId);
-    } catch (e) {
+
+      if (error) {
+        console.error('Erro ao salvar no Supabase:', error);
+        throw new Error(error.message);
+      }
+    } catch (e: any) {
       console.warn('Erro ao atualizar regime do perfil no Supabase:', e);
+      throw e;
     }
   }
 
   // Atualizar cache de perfis localmente
   try {
-    const perfis = await getPerfis();
-    const idx = perfis.findIndex(p => p.id === perfilId);
-    if (idx >= 0) {
-      perfis[idx] = {
-        ...perfis[idx],
-        regime,
-        dataReferenciaPlantao: dataReferencia,
-      };
-      localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(perfis));
+    const raw = localStorage.getItem(STORAGE_KEYS.PERFIS);
+    if (raw) {
+      const perfis = JSON.parse(raw);
+      if (Array.isArray(perfis)) {
+        const idx = perfis.findIndex(p => p.id === perfilId);
+        if (idx >= 0) {
+          perfis[idx] = {
+            ...perfis[idx],
+            regime,
+            dataReferenciaPlantao: dataReferencia,
+          };
+          localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(perfis));
+        }
+      }
     }
   } catch (e) {}
 }

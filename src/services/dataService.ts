@@ -276,7 +276,7 @@ export async function getPerfis(): Promise<Perfil[]> {
       // SEGURANÇA: Seleciona estritamente campos funcionais públicos, excluindo qualquer senha
       const { data, error } = await supabase
         .from('perfis')
-        .select('id, auth_user_id, matricula, nome_completo, equipe_id, papel, situacao, email, telefone')
+        .select('id, auth_user_id, matricula, nome_completo, equipe_id, papel, situacao, email, telefone, regime, data_referencia_plantao')
         .order('nome_completo');
 
       if (!error && Array.isArray(data) && data.length > 0) {

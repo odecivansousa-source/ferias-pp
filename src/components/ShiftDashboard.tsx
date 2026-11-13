@@ -174,15 +174,20 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
   };
 
   // Salvar Regime
+  const [salvandoRegime, setSalvandoRegime] = useState(false);
   const handleSalvarRegime = async () => {
     if (!policialParaRegime) return;
+    setSalvandoRegime(true);
     try {
       await updatePerfilRegime(policialParaRegime.id, regimeSelecionado, dataRefSelecionada);
       setModalRegimeOpen(false);
       setPolicialParaRegime(null);
       onDataUpdated();
+      alert('✅ Escala salva com sucesso!');
     } catch (err: any) {
-      alert('Erro ao atualizar regime: ' + err.message);
+      alert('Erro ao atualizar regime: ' + (err?.message || err));
+    } finally {
+      setSalvandoRegime(false);
     }
   };
 
