@@ -10,8 +10,8 @@ import { SupabaseModal } from './components/SupabaseModal';
 import { LoginScreen } from './components/LoginScreen';
 import { ShiftDashboard } from './components/ShiftDashboard';
 
-import { Perfil, Equipe, SolicitacaoFerias, ConfiguracaoFerias, HistoricoAuditoria, AusenciaPlantao, PlantaoConfig } from './types';
-import { getAusencias, getPlantaoConfig, DEFAULT_PLANTAO_CONFIG } from './services/plantaoService';
+import { Perfil, Equipe, SolicitacaoFerias, ConfiguracaoFerias, HistoricoAuditoria, AusenciaPlantao, PlantaoConfig, RemanejamentoPlantao } from './types';
+import { getAusencias, getPlantaoConfig, getRemanejamentos, DEFAULT_PLANTAO_CONFIG } from './services/plantaoService';
 import { 
   getEquipes, 
   getPerfis, 
@@ -37,6 +37,7 @@ export function App() {
   const [solicitacoes, setSolicitacoes] = useState<SolicitacaoFerias[]>([]);
   const [historico, setHistorico] = useState<HistoricoAuditoria[]>([]);
   const [ausencias, setAusencias] = useState<AusenciaPlantao[]>([]);
+  const [remanejamentos, setRemanejamentos] = useState<RemanejamentoPlantao[]>([]);
   const [plantaoConfig, setPlantaoConfig] = useState<PlantaoConfig>(DEFAULT_PLANTAO_CONFIG);
 
   // Carrega usuário autenticado salvo pela matrícula
@@ -73,7 +74,7 @@ export function App() {
   const loadData = useCallback(async () => {
     try {
       setLoadError(null);
-      const [eqs, perfs, cfg, sols, hist, aus, pCfg] = await Promise.all([
+      const [eqs, perfs, cfg, sols, hist, aus, pCfg, rems] = await Promise.all([
         getEquipes(),
         getPerfis(),
         getConfiguracao(),
@@ -81,6 +82,7 @@ export function App() {
         getHistoricoAuditoria(),
         getAusencias(),
         getPlantaoConfig(),
+        getRemanejamentos(),
       ]);
 
       const validPerfis = Array.isArray(perfs) && perfs.length > 0 ? perfs : generateMockPoliciais();
@@ -93,6 +95,7 @@ export function App() {
       setHistorico(prev => JSON.stringify(prev) === JSON.stringify(hist) ? prev : (Array.isArray(hist) ? hist : []));
       setAusencias(prev => JSON.stringify(prev) === JSON.stringify(aus) ? prev : (Array.isArray(aus) ? aus : []));
       setPlantaoConfig(prev => JSON.stringify(prev) === JSON.stringify(pCfg) ? prev : (pCfg || DEFAULT_PLANTAO_CONFIG));
+      setRemanejamentos(prev => JSON.stringify(prev) === JSON.stringify(rems) ? prev : (Array.isArray(rems) ? rems : []));
 
       const savedMat = localStorage.getItem('ferias_pp_logged_matricula');
       if (savedMat) {
@@ -290,6 +293,7 @@ export function App() {
             equipes={equipes}
             solicitacoes={solicitacoes}
             ausencias={ausencias}
+            remanejamentos={remanejamentos}
             plantaoConfig={plantaoConfig}
             currentUser={currentUser}
             onDataUpdated={loadData}

@@ -15,7 +15,8 @@ import {
   Trash2,
   KeyRound
 } from 'lucide-react';
-import { Perfil, Equipe, ConfiguracaoFerias, PapelUsuario, SituacaoFuncional } from '../types';
+import { Perfil, Equipe, ConfiguracaoFerias, PapelUsuario, SituacaoFuncional, RegimePlantao } from '../types';
+import { getDataReferenciaPadrao } from '../types/plantao';
 import { savePerfil, deletePerfil, updateEquipe, updateConfiguracao, resetDemoData } from '../services/dataService';
 import { DirectorModal } from './DirectorModal';
 
@@ -66,15 +67,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   });
 
   const handleOpenAddModal = () => {
+    const equipePadrao = '11111111-1111-1111-1111-111111111111';
     setModalPerfil({
       id: '',
       nomeCompleto: '',
       matricula: '',
-      equipeId: '11111111-1111-1111-1111-111111111111', // Equipe Alfa por padrão
+      equipeId: equipePadrao, // Equipe Alfa por padrão
       papel: 'policial',
       situacao: 'ativo',
       email: '',
       telefone: '',
+      regime: '2x6',
+      dataReferenciaPlantao: getDataReferenciaPadrao(equipePadrao, '2x6'),
     });
     setIsEditing(false);
     setFeedback(null);
@@ -131,16 +135,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         }
       }
 
+      const eqIdFinal = modalPerfil.papel === 'diretor' ? '00000000-0000-0000-0000-000000000000' : (!modalPerfil.equipeId || modalPerfil.equipeId === '00000000-0000-0000-0000-000000000000' ? '11111111-1111-1111-1111-111111111111' : modalPerfil.equipeId);
+      const regFinal: RegimePlantao = (modalPerfil.regime as RegimePlantao) || '2x6';
+      const dataRefFinal = modalPerfil.dataReferenciaPlantao || getDataReferenciaPadrao(eqIdFinal, regFinal);
+
       const perfilToSave: Perfil = {
         id: targetId || (modalPerfil.papel === 'diretor' ? '00000000-0000-0000-0000-000000000001' : 'pol-' + Date.now()),
         nomeCompleto: modalPerfil.nomeCompleto.trim(),
         matricula: modalPerfil.matricula.trim().toUpperCase(),
-        equipeId: modalPerfil.papel === 'diretor' ? '00000000-0000-0000-0000-000000000000' : (!modalPerfil.equipeId || modalPerfil.equipeId === '00000000-0000-0000-0000-000000000000' ? '11111111-1111-1111-1111-111111111111' : modalPerfil.equipeId),
+        equipeId: eqIdFinal,
         papel: (modalPerfil.papel as PapelUsuario) || 'policial',
         situacao: (modalPerfil.situacao as SituacaoFuncional) || 'ativo',
         email: modalPerfil.email,
         telefone: modalPerfil.telefone,
         senha: modalPerfil.senha?.trim() || undefined,
+        regime: modalPerfil.papel === 'diretor' ? undefined : regFinal,
+        dataReferenciaPlantao: modalPerfil.papel === 'diretor' ? undefined : dataRefFinal,
       };
 
       const saved = await savePerfil(perfilToSave);
@@ -612,7 +622,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   ) : (
                     <select
                       value={modalPerfil.equipeId || '11111111-1111-1111-1111-111111111111'}
-                      onChange={(e) => setModalPerfil({ ...modalPerfil, equipeId: e.target.value })}
+                      onChange={(e) => {
+                        const novaEquipe = e.target.value;
+                        const regAtual = (modalPerfil.regime as RegimePlantao) || '2x6';
+                        const novaData = getDataReferenciaPadrao(novaEquipe, regAtual);
+                        setModalPerfil({
+                          ...modalPerfil,
+                          equipeId: novaEquipe,
+                          dataReferenciaPlantao: novaData,
+                        });
+                      }}
                       className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold outline-none"
                     >
                       {equipes.filter(e => e.id !== '00000000-0000-0000-0000-000000000000' && e.codigo !== 'ADM' && e.nome !== 'ADM').map(eq => (
@@ -646,6 +665,57 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <option value="inativo">Inativo / Afastado</option>
                 </select>
               </div>
+
+              {/* Configuração Automática de Escala do Policial Penal */}
+              {modalPerfil.papel !== 'diretor' && (
+                <div className="bg-slate-50/80 border border-slate-200 p-3.5 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                    <span className="font-black text-navy-950 text-xs flex items-center gap-1.5">
+                      📅 Escala de Plantão (Preenchimento Automático)
+                    </span>
+                    <span className="text-[10px] text-emerald-800 bg-emerald-100 font-bold px-2 py-0.5 rounded-full">
+                      Sincronizado com a Equipe
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Regime de Trabalho</label>
+                      <select
+                        value={modalPerfil.regime || '2x6'}
+                        onChange={(e) => {
+                          const novoReg = e.target.value as RegimePlantao;
+                          const eqId = modalPerfil.equipeId || '11111111-1111-1111-1111-111111111111';
+                          const novaData = getDataReferenciaPadrao(eqId, novoReg);
+                          setModalPerfil({
+                            ...modalPerfil,
+                            regime: novoReg,
+                            dataReferenciaPlantao: novaData,
+                          });
+                        }}
+                        className="w-full text-xs p-2 bg-white border border-slate-300 rounded-xl font-bold text-navy-950 outline-none"
+                      >
+                        <option value="2x6">2×6 (Plantão 48h / Folga 6 dias)</option>
+                        <option value="1x3">1×3 (Plantão 24h / Folga 72h)</option>
+                        <option value="3x9">3×9 (Plantão 72h / Folga 9 dias)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">1º Dia do Plantão (Automático)</label>
+                      <input
+                        type="date"
+                        value={modalPerfil.dataReferenciaPlantao || getDataReferenciaPadrao(modalPerfil.equipeId || '11111111-1111-1111-1111-111111111111', (modalPerfil.regime as RegimePlantao) || '2x6')}
+                        onChange={(e) => setModalPerfil({ ...modalPerfil, dataReferenciaPlantao: e.target.value })}
+                        className="w-full text-xs p-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-navy-950 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 italic">
+                    Ao alterar a equipe ou o regime (1x3, 2x6 ou 3x9), a data de início é calculada e preenchida de forma automática.
+                  </p>
+                </div>
+              )}
 
               {modalPerfil.papel === 'diretor' && (
                 <div>

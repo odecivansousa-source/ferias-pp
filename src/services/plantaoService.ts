@@ -1,5 +1,5 @@
 // Serviço de Dados para Escala de Plantão — Polícia Penal CE
-import { AusenciaPlantao, PlantaoConfig, RegimePlantao } from '../types/plantao';
+import { AusenciaPlantao, PlantaoConfig, RegimePlantao, RemanejamentoPlantao, TipoRemanejamento } from '../types/plantao';
 import { Perfil } from '../types';
 import { getSupabaseClient, isSupabaseConnected } from './supabase';
 import { getPerfis } from './dataService';
@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   AUSENCIAS: 'ferias_pp_ausencias',
   CONFIG: 'ferias_pp_plantao_config',
   PERFIS: 'ferias_pp_perfis',
+  REMANEJAMENTOS: 'ferias_pp_remanejamentos',
 };
 
 export const DEFAULT_PLANTAO_CONFIG: PlantaoConfig = {
@@ -239,5 +240,121 @@ export async function updatePerfilRegime(
         }
       }
     }
+  } catch (e) {}
+}
+
+
+// -----------------------------------------------------------------------------
+// REMANEJAMENTOS DE PLANTÃO (Reforço / Completar < 5 policiais / Permutas)
+// -----------------------------------------------------------------------------
+export async function getRemanejamentos(): Promise<RemanejamentoPlantao[]> {
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConnected()) {
+    try {
+      const { data, error } = await supabase
+        .from('remanejamentos')
+        .select('*')
+        .order('data_plantao', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        const mapped: RemanejamentoPlantao[] = data.map(d => ({
+          id: d.id,
+          policialId: d.policial_id,
+          equipeDestinoId: d.equipe_destino_id,
+          dataPlantao: d.data_plantao,
+          motivo: d.motivo,
+          observacao: d.observacao || '',
+          criadoEm: d.criado_em,
+        }));
+        try {
+          localStorage.setItem(STORAGE_KEYS.REMANEJAMENTOS, JSON.stringify(mapped));
+        } catch (e) {}
+        return mapped;
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar remanejamentos do Supabase:', e);
+    }
+  }
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.REMANEJAMENTOS);
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) return list;
+    }
+  } catch (e) {}
+
+  return [];
+}
+
+export async function createRemanejamento(dados: {
+  policialId: string;
+  equipeDestinoId: string;
+  dataPlantao: string;
+  motivo?: TipoRemanejamento;
+  observacao?: string;
+}): Promise<RemanejamentoPlantao> {
+  const supabase = getSupabaseClient();
+  const novoId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+    ? crypto.randomUUID() 
+    : 'rem-' + Date.now();
+
+  const item: RemanejamentoPlantao = {
+    id: novoId,
+    policialId: dados.policialId,
+    equipeDestinoId: dados.equipeDestinoId,
+    dataPlantao: dados.dataPlantao,
+    motivo: dados.motivo || 'REMANEJAMENTO_DEFICIT',
+    observacao: dados.observacao || '',
+    criadoEm: new Date().toISOString(),
+  };
+
+  if (supabase && isSupabaseConnected()) {
+    try {
+      const { data, error } = await supabase
+        .from('remanejamentos')
+        .insert({
+          id: novoId.length === 36 ? novoId : undefined,
+          policial_id: dados.policialId,
+          equipe_destino_id: dados.equipeDestinoId,
+          data_plantao: dados.dataPlantao,
+          motivo: item.motivo,
+          observacao: item.observacao,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao salvar remanejamento no Supabase:', error);
+        throw new Error(error.message);
+      }
+      if (data?.id) item.id = data.id;
+    } catch (e: any) {
+      console.warn('Falha Supabase remanejamento:', e);
+      throw e;
+    }
+  }
+
+  try {
+    const list = await getRemanejamentos();
+    list.unshift(item);
+    localStorage.setItem(STORAGE_KEYS.REMANEJAMENTOS, JSON.stringify(list));
+  } catch (e) {}
+
+  return item;
+}
+
+export async function deleteRemanejamento(id: string): Promise<void> {
+  const supabase = getSupabaseClient();
+  if (supabase && isSupabaseConnected()) {
+    try {
+      await supabase.from('remanejamentos').delete().eq('id', id);
+    } catch (e) {}
+  }
+
+  try {
+    const list = await getRemanejamentos();
+    const filtered = list.filter(r => r.id !== id);
+    localStorage.setItem(STORAGE_KEYS.REMANEJAMENTOS, JSON.stringify(filtered));
   } catch (e) {}
 }

@@ -14,7 +14,9 @@ import {
   ChevronRight,
   Stethoscope,
   Umbrella,
-  FileText
+  FileText,
+  Check,
+  UserPlus
 } from 'lucide-react';
 import { Perfil, Equipe, SolicitacaoFerias } from '../types';
 import {
@@ -25,7 +27,10 @@ import {
   REGIME_LABELS,
   TIPO_AUSENCIA_LABELS,
   EQUIPE_CORES,
-  PolicialPlantao
+  PolicialPlantao,
+  RemanejamentoPlantao,
+  TipoRemanejamento,
+  getDataReferenciaPadrao
 } from '../types/plantao';
 import {
   calcularPlantoesDia,
@@ -34,6 +39,8 @@ import {
 import {
   createAusencia,
   deleteAusencia,
+  createRemanejamento,
+  deleteRemanejamento,
   updatePerfilRegime,
   updatePlantaoConfig
 } from '../services/plantaoService';
@@ -43,6 +50,7 @@ interface ShiftDashboardProps {
   equipes: Equipe[];
   solicitacoes: SolicitacaoFerias[];
   ausencias: AusenciaPlantao[];
+  remanejamentos?: RemanejamentoPlantao[];
   plantaoConfig: PlantaoConfig;
   currentUser: Perfil;
   onDataUpdated: () => void;
@@ -54,6 +62,7 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
   equipes,
   solicitacoes,
   ausencias,
+  remanejamentos = [],
   plantaoConfig,
   currentUser,
   onDataUpdated,
@@ -92,6 +101,87 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
   const [regimeSelecionado, setRegimeSelecionado] = useState<RegimePlantao>('1x3');
   const [dataRefSelecionada, setDataRefSelecionada] = useState<string>(hojeStr);
 
+
+  // Estado para Modal de Remanejamento / Reforço (< 5 policiais)
+  const [modalRemanejamentoOpen, setModalRemanejamentoOpen] = useState(false);
+  const [equipeDestinoRemanejamento, setEquipeDestinoRemanejamento] = useState<string | null>(null);
+  const [policialRemanejadoId, setPolicialRemanejadoId] = useState<string>('');
+  const [motivoRemanejamento, setMotivoRemanejamento] = useState<TipoRemanejamento>('REMANEJAMENTO_DEFICIT');
+  const [obsRemanejamento, setObsRemanejamento] = useState<string>('');
+  const [salvandoRemanejamento, setSalvandoRemanejamento] = useState(false);
+
+  // Lista de policiais de FOLGA no dia selecionado (das outras equipes) aptos a reforço
+  const policiaisDeFolgaNoDia = useMemo(() => {
+    if (!equipeDestinoRemanejamento) return [];
+    
+    // Todos os policiais de outras equipes que trabalham no regime 24h
+    return perfis.filter(pol => {
+      if (pol.situacao !== 'ativo') return false;
+      if (pol.papel === 'diretor' || (pol.papel as string) === 'admin') return false;
+      if (pol.equipeId === equipeDestinoRemanejamento) return false; // Não da própria equipe
+      
+      // Checa se já está escalado para a própria equipe neste dia
+      const estaTrabalhando = calcularPlantoesDia(
+        dataSelecionada,
+        perfis,
+        equipes,
+        ausencias,
+        solicitacoes,
+        plantaoConfig.efetivoMinimo,
+        plantaoConfig.efetivoAlerta,
+        remanejamentos
+      ).some(pl => pl.policiais.some(p => p.id === pol.id && p.escalado && !p.isRemanejado));
+
+      if (estaTrabalhando) return false;
+
+      // Checa se já está remanejado hoje
+      const jaRemanejado = remanejamentos.some(r => r.policialId === pol.id && r.dataPlantao === dataSelecionada);
+      if (jaRemanejado) return false;
+
+      return true;
+    });
+  }, [equipeDestinoRemanejamento, dataSelecionada, perfis, equipes, ausencias, solicitacoes, plantaoConfig, remanejamentos]);
+
+  const handleAbrirRemanejamento = (equipeId: string) => {
+    setEquipeDestinoRemanejamento(equipeId);
+    setPolicialRemanejadoId('');
+    setMotivoRemanejamento('REMANEJAMENTO_DEFICIT');
+    setObsRemanejamento('');
+    setModalRemanejamentoOpen(true);
+  };
+
+  const handleSalvarRemanejamento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!equipeDestinoRemanejamento || !policialRemanejadoId) {
+      alert('Por favor, selecione o policial de folga a ser remanejado.');
+      return;
+    }
+    setSalvandoRemanejamento(true);
+    try {
+      await createRemanejamento({
+        policialId: policialRemanejadoId,
+        equipeDestinoId: equipeDestinoRemanejamento,
+        dataPlantao: dataSelecionada,
+        motivo: motivoRemanejamento,
+        observacao: obsRemanejamento,
+      });
+      setModalRemanejamentoOpen(false);
+      onDataUpdated();
+      alert('✅ Policial remanejado com sucesso para completar o efetivo!');
+    } catch (err: any) {
+      alert('Erro ao remanejar policial: ' + (err?.message || err));
+    } finally {
+      setSalvandoRemanejamento(false);
+    }
+  };
+
+  const handleExcluirRemanejamento = async (id: string) => {
+    if (confirm('Deseja remover este remanejamento de escala?')) {
+      await deleteRemanejamento(id);
+      onDataUpdated();
+    }
+  };
+
   // Modal para detalhes de um dia no calendário
   const [diaDetalheModal, setDiaDetalheModal] = useState<string | null>(null);
 
@@ -109,9 +199,10 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
       ausencias,
       solicitacoes,
       plantaoConfig.efetivoMinimo,
-      plantaoConfig.efetivoAlerta
+      plantaoConfig.efetivoAlerta,
+      remanejamentos
     );
-  }, [dataSelecionada, perfis, equipes, ausencias, solicitacoes, plantaoConfig]);
+  }, [dataSelecionada, perfis, equipes, ausencias, solicitacoes, plantaoConfig, remanejamentos]);
 
   // Alerta global do dia
   const temAlertaCritico = plantoesDia.some(p => p.status === 'CRITICO' && p.totalEscalados > 0);
@@ -500,6 +591,21 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                   <div className="text-[11px] text-slate-500 mb-2">
                     Meta mínima: <strong>{plantaoConfig.efetivoMinimo} policiais</strong>
                   </div>
+                  {/* Botão de Remanejamento / Completar Efetivo se estiver com menos de 5 policiais */}
+                  {isDiretor && plantao.totalEscalados > 0 && (plantao.diretorPresenteDiurno ? plantao.efetivoDiurno : plantao.efetivoReal) < plantaoConfig.efetivoMinimo && (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => handleAbrirRemanejamento(plantao.equipeId)}
+                        className="w-full text-xs font-black text-rose-900 bg-rose-100 hover:bg-rose-200 border border-rose-300 py-2 px-3 rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 animate-pulse"
+                        title="Puxar um policial de folga de outra equipe para completar o mínimo de 5 policiais"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 text-rose-700" />
+                        <span>Puxar Policial de Folga (Completar 5)</span>
+                      </button>
+                    </div>
+                  )}
+
 
                   {/* Lista de Policiais Escalados */}
                   <div className="space-y-1.5 mt-3 pt-3 border-t border-slate-100 max-h-56 overflow-y-auto">
@@ -542,6 +648,24 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                               <span className="text-[9px] font-black uppercase bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded">
                                 {pol.motivoAusencia || 'AUSENTE'}
                               </span>
+                            ) : pol.isRemanejado ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] font-black text-purple-800 bg-purple-100 border border-purple-300 px-1.5 py-0.5 rounded">
+                                  REFORÇO ({pol.equipeOrigemNome?.slice(7) || 'FOLGA'})
+                                </span>
+                                {isDiretor && (
+                                  <button
+                                    onClick={() => {
+                                      const remItem = remanejamentos.find(r => r.policialId === pol.id && r.dataPlantao === dataSelecionada);
+                                      if (remItem) handleExcluirRemanejamento(remItem.id);
+                                    }}
+                                    className="text-rose-500 hover:text-rose-700 p-0.5"
+                                    title="Remover remanejamento"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
                             ) : pol.isDiretor ? (
                               <span className="text-[9px] font-black text-blue-800 bg-blue-100 border border-blue-300 px-1.5 py-0.5 rounded">
                                 PRESENTE (DIURNO)
@@ -612,7 +736,8 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                             ausencias,
                             solicitacoes,
                             plantaoConfig.efetivoMinimo,
-                            plantaoConfig.efetivoAlerta
+                            plantaoConfig.efetivoAlerta,
+                            remanejamentos
                           )[0];
 
                           const dDia = new Date(`${dia}T12:00:00Z`);
@@ -796,7 +921,8 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                 ausencias,
                 solicitacoes,
                 plantaoConfig.efetivoMinimo,
-                plantaoConfig.efetivoAlerta
+                plantaoConfig.efetivoAlerta,
+                remanejamentos
               );
 
               const ehHoje = dia.dataStr === hojeStr;
@@ -1152,7 +1278,12 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                         name="regime"
                         value={r}
                         checked={regimeSelecionado === r}
-                        onChange={() => setRegimeSelecionado(r)}
+                        onChange={() => {
+                        setRegimeSelecionado(r);
+                        if (policialParaRegime) {
+                          setDataRefSelecionada(getDataReferenciaPadrao(policialParaRegime.equipeId, r));
+                        }
+                      }}
                         className="text-navy-900 focus:ring-navy-900"
                       />
                       <span>{REGIME_LABELS[r]}</span>
@@ -1192,6 +1323,112 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      
+      {/* MODAL: REMANEJAR POLICIAL DE FOLGA (< 5 POLICIAIS) */}
+      {modalRemanejamentoOpen && (
+        <div className="fixed inset-0 z-50 bg-navy-950/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <form onSubmit={handleSalvarRemanejamento} className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-navy-950 text-base">Completar Efetivo Mínimo</h3>
+                  <p className="text-xs text-slate-500">Puxar Policial de Folga de Outra Equipe</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalRemanejamentoOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-2xl text-[11px] text-amber-900 leading-relaxed">
+              <strong>Data do Plantão:</strong> {formatarDataBR(dataSelecionada)}<br />
+              <strong>Equipe Destino:</strong> {equipes.find(e => e.id === equipeDestinoRemanejamento)?.nome}<br />
+              O sistema listou abaixo somente policiais das outras equipes que estão <strong>de folga</strong> nesta data.
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Selecione o Policial de Folga:
+                </label>
+                {policiaisDeFolgaNoDia.length === 0 ? (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-400 italic text-center text-xs">
+                    Nenhum policial de outra equipe disponível de folga nesta data.
+                  </div>
+                ) : (
+                  <select
+                    required
+                    value={policialRemanejadoId}
+                    onChange={e => setPolicialRemanejadoId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-bold text-navy-950 outline-none focus:ring-2 focus:ring-navy-900"
+                  >
+                    <option value="">-- Escolha um policial disponível --</option>
+                    {policiaisDeFolgaNoDia.map(pol => {
+                      const eqOrigem = equipes.find(e => e.id === pol.equipeId);
+                      return (
+                        <option key={pol.id} value={pol.id}>
+                          {pol.nomeCompleto} ({eqOrigem?.nome || 'Folga'} - Mat: {pol.matricula})
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Motivo do Remanejamento:</label>
+                <select
+                  value={motivoRemanejamento}
+                  onChange={e => setMotivoRemanejamento(e.target.value as TipoRemanejamento)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-800 outline-none"
+                >
+                  <option value="REMANEJAMENTO_DEFICIT">Completar Efetivo Mínimo (&lt; 5 policiais)</option>
+                  <option value="PERMUTA">Permuta / Troca de Plantão</option>
+                  <option value="REFORCO">Reforço Operacional / Missão</option>
+                  <option value="EXTRA">Hora Extra / Diária</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Observações (Opcional):</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Cobertura de atestado médico"
+                  value={obsRemanejamento}
+                  onChange={e => setObsRemanejamento(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setModalRemanejamentoOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={salvandoRemanejamento || policiaisDeFolgaNoDia.length === 0}
+                className="px-5 py-2 text-xs font-black text-white bg-navy-900 hover:bg-navy-800 disabled:opacity-50 rounded-xl transition shadow flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5 text-gold-400" />
+                <span>{salvandoRemanejamento ? 'Salvando...' : 'Confirmar Remanejamento'}</span>
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
@@ -1325,7 +1562,8 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                 ausencias,
                 solicitacoes,
                 plantaoConfig.efetivoMinimo,
-                plantaoConfig.efetivoAlerta
+                plantaoConfig.efetivoAlerta,
+                remanejamentos
               ).map(pl => {
                 const cor = EQUIPE_CORES[pl.equipeNome.toUpperCase()] || EQUIPE_CORES['ALFA'];
                 const escalados = pl.policiais.filter(p => p.escalado);

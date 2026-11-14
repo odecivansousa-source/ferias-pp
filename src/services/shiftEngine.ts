@@ -5,7 +5,9 @@ import {
   AusenciaPlantao,
   PolicialPlantao,
   PlantaoEquipeDiario,
-  TIPO_AUSENCIA_LABELS
+  TIPO_AUSENCIA_LABELS,
+  RemanejamentoPlantao,
+  TIPO_REMANEJAMENTO_LABELS
 } from '../types/plantao';
 
 export interface RegimeConfig {
@@ -95,7 +97,8 @@ export function calcularPlantoesDia(
   ausencias: AusenciaPlantao[],
   solicitacoes: SolicitacaoFerias[],
   efetivoMinimo: number = 5,
-  efetivoAlerta: number = 4
+  efetivoAlerta: number = 4,
+  remanejamentos: RemanejamentoPlantao[] = []
 ): PlantaoEquipeDiario[] {
   // Apenas policiais ativos e operacionais da escala 24h
   const policiaisAtivos = perfis.filter(
@@ -166,11 +169,40 @@ export function calcularPlantoesDia(
         motivoAusencia,
         presente: escalado && !ausente,
         isDiretor: false,
+        isRemanejado: false,
       };
+    });
+
+    // Adiciona policiais de OUTRAS equipes que foram REMANEJADOS temporariamente para esta equipe nesta data
+    const remanejadosParaEstaEquipe = remanejamentos.filter(
+      r => r.equipeDestinoId === equipe.id && r.dataPlantao === dataAlvo
+    );
+
+    remanejadosParaEstaEquipe.forEach(rem => {
+      const polRem = perfis.find(p => p.id === rem.policialId);
+      if (polRem && polRem.situacao === 'ativo') {
+        const eqOrigem = equipes.find(e => e.id === polRem.equipeId);
+        policiaisDetalhe.push({
+          id: polRem.id,
+          nome: polRem.nomeCompleto,
+          matricula: polRem.matricula,
+          equipeId: equipe.id,
+          regime: polRem.regime,
+          dataReferencia: polRem.dataReferenciaPlantao,
+          escalado: true,
+          ausente: false,
+          presente: true,
+          isDiretor: false,
+          isRemanejado: true,
+          equipeOrigemNome: eqOrigem?.nome || 'Outra Equipe',
+          motivoRemanejamento: TIPO_REMANEJAMENTO_LABELS[rem.motivo] || 'REMANEJADO',
+        });
+      }
     });
 
     const escalados = policiaisDetalhe.filter(p => p.escalado);
     const ausentes = escalados.filter(p => p.ausente);
+    const remanejadosCount = policiaisDetalhe.filter(p => p.isRemanejado).length;
     const efetivoReal = escalados.length - ausentes.length;
 
     // Se esta equipe tem policiais de plantão hoje e for dia útil (Seg a Sex):
@@ -186,13 +218,12 @@ export function calcularPlantoesDia(
         nome: diretor.nomeCompleto,
         matricula: diretor.matricula,
         equipeId: equipe.id,
-        regime: undefined,
-        dataReferencia: undefined,
         escalado: true,
         ausente: !diretorPresenteHoje,
         motivoAusencia: diretorAusenciaMotivo,
         presente: diretorPresenteHoje,
         isDiretor: true,
+        isRemanejado: false,
       });
     }
 
@@ -215,6 +246,7 @@ export function calcularPlantoesDia(
       totalPoliciasEquipe: membrosEquipe.length,
       totalEscalados: escalados.length + (incluiDiretor ? 1 : 0),
       totalAusentes: ausentes.length + (incluiDiretor && !diretorPresenteHoje ? 1 : 0),
+      totalRemanejados: remanejadosCount,
       efetivoReal,
       efetivoDiurno,
       diretorPresenteDiurno: incluiDiretor && diretorPresenteHoje,
