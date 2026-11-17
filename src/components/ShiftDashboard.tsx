@@ -250,6 +250,7 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
         observacao: '',
       });
       onDataUpdated();
+      alert('✅ Afastamento registrado e salvo no sistema com sucesso!');
     } catch (err: any) {
       alert('Erro ao salvar ausência: ' + err.message);
     }

@@ -63,11 +63,22 @@ export async function getAusencias(): Promise<AusenciaPlantao[]> {
 export async function createAusencia(
   nova: Omit<AusenciaPlantao, 'id' | 'criadoEm'>
 ): Promise<AusenciaPlantao> {
-  const id = 'aus-' + Date.now();
+  const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'aus-' + Date.now();
   const criadoEm = new Date().toISOString();
+
+  let targetPolicialId = nova.policialId;
+  const isUuid = !!(targetPolicialId && targetPolicialId.length === 36 && targetPolicialId.includes('-'));
+  if (!isUuid) {
+    const perfis = await getPerfis();
+    const found = perfis.find(p => p.id === targetPolicialId || p.matricula === targetPolicialId);
+    if (found && found.id && found.id.length === 36 && found.id.includes('-')) {
+      targetPolicialId = found.id;
+    }
+  }
 
   const item: AusenciaPlantao = {
     ...nova,
+    policialId: targetPolicialId,
     id,
     criadoEm,
   };
@@ -78,7 +89,8 @@ export async function createAusencia(
       const { data, error } = await supabase
         .from('ausencias')
         .insert({
-          policial_id: item.policialId,
+          id: id.length === 36 ? id : undefined,
+          policial_id: targetPolicialId,
           tipo: item.tipo,
           data_inicio: item.dataInicio,
           data_fim: item.dataFim,
@@ -87,16 +99,27 @@ export async function createAusencia(
         .select()
         .single();
 
-      if (!error && data) {
+      if (error) {
+        console.error('Erro ao salvar ausência no Supabase:', error);
+        throw new Error(error.message);
+      }
+
+      if (data?.id) {
         item.id = data.id;
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Erro ao salvar ausência no Supabase:', e);
+      throw e;
     }
   }
 
   const list = await getAusencias();
-  list.unshift(item);
+  const existingIdx = list.findIndex(a => a.id === item.id);
+  if (existingIdx >= 0) {
+    list[existingIdx] = item;
+  } else {
+    list.unshift(item);
+  }
   try {
     localStorage.setItem(STORAGE_KEYS.AUSENCIAS, JSON.stringify(list));
   } catch (e) {}
@@ -108,9 +131,14 @@ export async function deleteAusencia(id: string): Promise<boolean> {
   const supabase = getSupabaseClient();
   if (supabase && isSupabaseConnected()) {
     try {
-      await supabase.from('ausencias').delete().eq('id', id);
-    } catch (e) {
+      const { error } = await supabase.from('ausencias').delete().eq('id', id);
+      if (error) {
+        console.error('Erro ao deletar ausência no Supabase:', error);
+        throw new Error(error.message);
+      }
+    } catch (e: any) {
       console.warn('Erro ao deletar ausência no Supabase:', e);
+      throw e;
     }
   }
 
