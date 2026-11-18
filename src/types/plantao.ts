@@ -56,7 +56,7 @@ export interface PlantaoEquipeDiario {
   efetivoReal: number; // Efetivo operacional 24h
   efetivoDiurno: number; // Efetivo total durante o dia (conta Diretor de seg a sex)
   diretorPresenteDiurno: boolean; // Se o Diretor está presente na unidade neste dia (Seg a Sex)
-  status: 'OK' | 'ALERTA' | 'CRITICO';
+  status: 'OK' | 'ALERTA' | 'CRITICO' | 'FOLGA';
   policiais: PolicialPlantao[];
 }
 

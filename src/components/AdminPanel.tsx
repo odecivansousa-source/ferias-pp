@@ -57,7 +57,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [configState, setConfigState] = useState<ConfiguracaoFerias>(config);
 
   const policiaisFiltrados = perfis.filter(p => {
-    if (filterEquipe !== 'TODAS' && p.equipeId !== filterEquipe) return false;
+    const isDir = p.papel === 'diretor' || (p.papel as string) === 'admin';
+    if (filterEquipe !== 'TODAS') {
+      if (filterEquipe === '00000000-0000-0000-0000-000000000000' || filterEquipe === 'ADM') {
+        if (!isDir && p.equipeId !== '00000000-0000-0000-0000-000000000000') return false;
+      } else {
+        // Diretor não pertence a nenhuma equipe operacional 24h
+        if (isDir) return false;
+        if (p.equipeId !== filterEquipe) return false;
+      }
+    }
     if (filterPapel !== 'TODOS' && p.papel !== filterPapel) return false;
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -151,6 +160,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         senha: modalPerfil.senha?.trim() || undefined,
         regime: modalPerfil.papel === 'diretor' ? undefined : regFinal,
         dataReferenciaPlantao: modalPerfil.papel === 'diretor' ? undefined : dataRefFinal,
+        dataNascimento: modalPerfil.dataNascimento || undefined,
       };
 
       const saved = await savePerfil(perfilToSave);
@@ -654,16 +664,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-navy-950 mb-1">Situação Funcional</label>
-                <select
-                  value={modalPerfil.situacao || 'ativo'}
-                  onChange={(e) => setModalPerfil({ ...modalPerfil, situacao: e.target.value as any })}
-                  className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold outline-none"
-                >
-                  <option value="ativo">Ativo</option>
-                  <option value="inativo">Inativo / Afastado</option>
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-navy-950 mb-1">Situação Funcional</label>
+                  <select
+                    value={modalPerfil.situacao || 'ativo'}
+                    onChange={(e) => setModalPerfil({ ...modalPerfil, situacao: e.target.value as any })}
+                    className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-semibold outline-none"
+                  >
+                    <option value="ativo">Ativo</option>
+                    <option value="inativo">Inativo / Afastado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-navy-950 mb-1">
+                    🎂 Data de Nascimento
+                  </label>
+                  <input
+                    type="date"
+                    value={modalPerfil.dataNascimento || ''}
+                    onChange={(e) => setModalPerfil({ ...modalPerfil, dataNascimento: e.target.value })}
+                    className="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-bold text-navy-950 outline-none"
+                    placeholder="YYYY-MM-DD"
+                  />
+                </div>
               </div>
 
               {/* Configuração Automática de Escala do Policial Penal */}

@@ -16,7 +16,12 @@ import {
   Umbrella,
   FileText,
   Check,
-  UserPlus
+  UserPlus,
+  Users,
+  Moon,
+  Building2,
+  Cake,
+  Sparkles
 } from 'lucide-react';
 import { Perfil, Equipe, SolicitacaoFerias } from '../types';
 import {
@@ -213,6 +218,76 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
     // Diretor não entra na cobrança de escala de plantão
     return perfis.filter(p => p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin' && (!p.regime || !p.dataReferenciaPlantao));
   }, [perfis]);
+
+  // Diretor da Unidade
+  const diretorUnidade = useMemo(() => {
+    return perfis.find(p => p.situacao === 'ativo' && (p.papel === 'diretor' || (p.papel as string) === 'admin'));
+  }, [perfis]);
+
+  // Checa se o dia selecionado é dia útil (Segunda a Sexta = 1 a 5)
+  const ehDiaUtilSelecionado = useMemo(() => {
+    const d = new Date(`${dataSelecionada}T12:00:00Z`);
+    const day = d.getUTCDay();
+    return day >= 1 && day <= 5;
+  }, [dataSelecionada]);
+
+  // Nome do dia da semana
+  const diaSemanaExtenso = useMemo(() => {
+    const d = new Date(`${dataSelecionada}T12:00:00Z`);
+    const nomes = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return nomes[d.getUTCDay()];
+  }, [dataSelecionada]);
+
+  // Checa se o Diretor possui férias ou afastamento cadastrado na data
+  const diretorAusenciaInfo = useMemo(() => {
+    if (!diretorUnidade) return null;
+    const emFerias = solicitacoes.some(s => s.policialId === diretorUnidade.id && s.status === 'APROVADA' && (s.periodos || []).some(p => p.dataInicio <= dataSelecionada && dataSelecionada <= p.dataFim));
+    if (emFerias) return 'FÉRIAS';
+    const outra = ausencias.find(a => a.policialId === diretorUnidade.id && a.dataInicio <= dataSelecionada && dataSelecionada <= a.dataFim);
+    if (outra) return TIPO_AUSENCIA_LABELS[outra.tipo] || 'AFASTADO';
+    return null;
+  }, [diretorUnidade, solicitacoes, ausencias, dataSelecionada]);
+
+  const diretorPresenteDiurno = ehDiaUtilSelecionado && !!diretorUnidade && !diretorAusenciaInfo;
+
+  // Resumo Geral da Unidade no Dia (Visão Executiva da Direção)
+  const resumoGeralDia = useMemo(() => {
+    const totalPlantao24h = plantoesDia.reduce((acc, p) => acc + p.efetivoReal, 0);
+    const totalAusentes = plantoesDia.reduce((acc, p) => acc + p.totalAusentes, 0);
+    const totalDiurno = totalPlantao24h + (diretorPresenteDiurno ? 1 : 0);
+    const equipesAtivas = plantoesDia.filter(p => p.totalEscalados > 0);
+    const equipesFolga = plantoesDia.filter(p => p.status === 'FOLGA' || p.totalEscalados === 0);
+    const totalPoliciaisAtivos = perfis.filter(p => p.situacao === 'ativo').length;
+    const totalDeFolga = Math.max(0, totalPoliciaisAtivos - totalPlantao24h - (diretorPresenteDiurno ? 1 : 0) - totalAusentes);
+
+    return {
+      totalPlantao24h,
+      totalDiurno,
+      totalAusentes,
+      equipesAtivas,
+      equipesFolga,
+      totalPoliciaisAtivos,
+      totalDeFolga,
+    };
+  }, [plantoesDia, diretorPresenteDiurno, perfis]);
+
+  // Aniversariantes de Plantão Hoje (Policial escalado e presente cujo mês e dia coincidem com a data selecionada)
+  const aniversariantesPlantao = useMemo(() => {
+    const mmdd = dataSelecionada.slice(5); // 'MM-DD'
+    const escaladosPresentes = plantoesDia.flatMap(p => p.policiais.filter(pol => pol.escalado && !pol.ausente && !pol.isDiretor));
+    return escaladosPresentes.filter(pol => {
+      const perfilCompleto = perfis.find(p => p.id === pol.id);
+      return perfilCompleto?.dataNascimento && perfilCompleto.dataNascimento.slice(5) === mmdd;
+    }).map(pol => {
+      const perfilCompleto = perfis.find(p => p.id === pol.id);
+      const equipe = equipes.find(e => e.id === pol.equipeId);
+      return {
+        ...pol,
+        dataNascimento: perfilCompleto?.dataNascimento,
+        equipeNome: equipe?.nome || 'Equipe',
+      };
+    });
+  }, [dataSelecionada, plantoesDia, perfis, equipes]);
 
   // Navegar dia anterior / próximo
   const alterarDia = (dias: number) => {
@@ -512,6 +587,180 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
       {/* SUB-ABA 1: VISÃO DO DIA */}
       {subTab === 'hoje' && (
         <div className="space-y-6">
+          {/* AVISO CELEBRATIVO — ANIVERSARIANTE DE PLANTÃO HOJE */}
+          {aniversariantesPlantao.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 text-navy-950 p-4 sm:p-5 rounded-3xl shadow-lg border-2 border-amber-300 flex items-center justify-between gap-4 animate-fadeIn">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-white/50 backdrop-blur-xs flex items-center justify-center text-2xl shadow-inner flex-shrink-0">
+                  🎂
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-navy-950 text-gold-300 px-2 py-0.5 rounded-md">
+                      Aviso à Direção
+                    </span>
+                    <span className="text-xs font-black text-navy-900">
+                      Aniversariante de Plantão Hoje!
+                    </span>
+                  </div>
+                  <div className="text-base font-black text-navy-950 mt-0.5">
+                    {aniversariantesPlantao.map(a => `${a.nome} (${a.equipeNome} • Mat: ${a.matricula})`).join(' e ')}
+                  </div>
+                  <div className="text-xs text-navy-800 font-medium">
+                    Parabéns ao policial penal que está comemorando aniversário cumprindo sua escala de plantão na unidade prisional!
+                  </div>
+                </div>
+              </div>
+              <div className="hidden sm:flex flex-col items-end flex-shrink-0">
+                <span className="px-3.5 py-1.5 bg-navy-950 text-gold-300 font-black text-xs rounded-xl shadow-sm flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-gold-400" />
+                  <span>Parabéns Guerreiro(a)!</span>
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* PAINEL RESUMO DA DIREÇÃO — VISÃO GERAL DO EFETIVO DA UNIDADE */}
+          <div className="bg-gradient-to-r from-navy-950 via-navy-900 to-slate-900 rounded-3xl p-6 text-white shadow-xl border border-navy-800">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-navy-800/80">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs uppercase font-extrabold tracking-wider text-gold-400">
+                    Visão Geral da Unidade Prisional — Direção
+                  </span>
+                </div>
+                <h2 className="text-xl lg:text-2xl font-black text-white flex items-center gap-2">
+                  <span>Plantão de {formatarDataBR(dataSelecionada)}</span>
+                  <span className="text-sm font-semibold text-slate-300">({diaSemanaExtenso})</span>
+                </h2>
+                <p className="text-xs text-slate-300 mt-1">
+                  Controle unificado de efetivo diurno/noturno, equipes de serviço e equipes em folga.
+                </p>
+              </div>
+
+              {/* Badges de equipes ativas e folga */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="bg-navy-800/80 border border-navy-700 px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5">
+                  <span className="text-slate-400 font-bold">Plantão 24h:</span>
+                  {resumoGeralDia.equipesAtivas.length > 0 ? (
+                    <span className="font-extrabold text-gold-300">
+                      {resumoGeralDia.equipesAtivas.map(e => `${e.equipeNome} (${e.efetivoReal} pol.)`).join(', ')}
+                    </span>
+                  ) : (
+                    <span className="font-bold text-slate-400">Nenhuma</span>
+                  )}
+                </div>
+
+                <div className="bg-navy-800/80 border border-navy-700 px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5">
+                  <span className="text-slate-400 font-bold">De Folga Hoje:</span>
+                  {resumoGeralDia.equipesFolga.length > 0 ? (
+                    <span className="font-bold text-slate-300">
+                      {resumoGeralDia.equipesFolga.map(e => e.equipeNome).join(', ')}
+                    </span>
+                  ) : (
+                    <span className="font-bold text-slate-400">Nenhuma</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 4 Métricas Principais da Unidade */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-5">
+              {/* Card 1: Efetivo Diurno Total */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition">
+                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Efetivo Diurno Total</span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    08h às 17h
+                  </span>
+                </div>
+                <div className="text-3xl font-black text-white mt-1">
+                  {resumoGeralDia.totalDiurno}{' '}
+                  <span className="text-xs font-bold text-slate-300 font-normal">policiais</span>
+                </div>
+                <div className="text-[11px] text-slate-300 mt-1">
+                  {resumoGeralDia.totalPlantao24h} escala 24h {diretorPresenteDiurno ? '+ 1 Diretor' : ''}
+                </div>
+              </div>
+
+              {/* Card 2: Efetivo Noturno Total */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition">
+                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Efetivo Noturno</span>
+                  <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/30">
+                    17h às 08h
+                  </span>
+                </div>
+                <div className="text-3xl font-black text-white mt-1">
+                  {resumoGeralDia.totalPlantao24h}{' '}
+                  <span className="text-xs font-bold text-slate-300 font-normal">policiais</span>
+                </div>
+                <div className="text-[11px] text-slate-300 mt-1">
+                  Plantão operacional 24h carceragem
+                </div>
+              </div>
+
+              {/* Card 3: Quadro Geral e Folga */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition">
+                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                  Quadro da Unidade
+                </div>
+                <div className="text-3xl font-black text-gold-400 mt-1">
+                  {resumoGeralDia.totalPoliciaisAtivos}{' '}
+                  <span className="text-xs font-bold text-slate-300 font-normal">ativos</span>
+                </div>
+                <div className="text-[11px] text-slate-300 mt-1">
+                  {resumoGeralDia.totalDeFolga} policiais de folga hoje
+                </div>
+              </div>
+
+              {/* Card 4: Afastamentos / Ausentes */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 transition">
+                <div className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                  Afastados / Férias
+                </div>
+                <div className={`text-3xl font-black mt-1 ${resumoGeralDia.totalAusentes > 0 ? 'text-rose-400' : 'text-slate-200'}`}>
+                  {resumoGeralDia.totalAusentes}{' '}
+                  <span className="text-xs font-bold text-slate-300 font-normal">hoje</span>
+                </div>
+                <div className="text-[11px] text-slate-300 mt-1">
+                  {resumoGeralDia.totalAusentes > 0 ? 'Atestados, licenças ou férias' : 'Nenhuma ausência registrada'}
+                </div>
+              </div>
+            </div>
+
+            {/* Informação do Diretor da Unidade */}
+            {diretorUnidade && (
+              <div className="mt-4 pt-3 border-t border-navy-800 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-300 gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-gold-400/20 text-gold-300 font-bold border border-gold-400/30 text-[10px]">
+                    DIREÇÃO DA UNIDADE
+                  </span>
+                  <span className="font-bold text-white">{diretorUnidade.nomeCompleto}</span>
+                  <span className="text-slate-400 font-mono">(Mat: {diretorUnidade.matricula})</span>
+                </div>
+                <div>
+                  {ehDiaUtilSelecionado ? (
+                    diretorPresenteDiurno ? (
+                      <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        ✓ Expediente Comercial (08h às 17h) — Presente na Unidade
+                      </span>
+                    ) : (
+                      <span className="text-rose-400 font-bold">
+                        ⚠ Afastado hoje: {diretorAusenciaInfo || 'Ausente'}
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-slate-400 italic">
+                      Fim de semana (Expediente Administrativo em recesso)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* CARDS DAS 4 EQUIPES */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {plantoesDia.map(plantao => {
@@ -519,8 +768,89 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                           EQUIPE_CORES[plantao.equipeCodigo.toUpperCase()] ||
                           EQUIPE_CORES['ALFA'];
 
+              const isFolga = plantao.status === 'FOLGA' || plantao.totalEscalados === 0;
+              const membrosEquipe = perfis.filter(
+                p => p.equipeId === plantao.equipeId && p.situacao === 'ativo' && p.papel !== 'diretor' && (p.papel as string) !== 'admin'
+              );
               const policiaisEscalados = plantao.policiais.filter(p => p.escalado);
 
+              // SE A EQUIPE ESTIVER DE FOLGA:
+              if (isFolga) {
+                return (
+                  <div
+                    key={plantao.equipeId}
+                    className="bg-white rounded-3xl border-2 border-slate-200 bg-slate-50/50 p-5 shadow-xs transition-all hover:shadow-md"
+                  >
+                    {/* Cabeçalho da Equipe de Folga */}
+                    <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-200">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-3.5 h-3.5 rounded-full ${cor.bg}`} />
+                        <h3 className="font-black text-navy-950 text-base">
+                          {plantao.equipeNome}
+                        </h3>
+                      </div>
+
+                      {/* Badge DE FOLGA */}
+                      <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-300">
+                        DE FOLGA
+                      </span>
+                    </div>
+
+                    {/* Resumo Numérico de Folga */}
+                    <div className="grid grid-cols-3 gap-2 text-center my-3 bg-white p-2.5 rounded-2xl border border-slate-200">
+                      <div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">Quadro Total</div>
+                        <div className="text-lg font-black text-navy-950">{membrosEquipe.length}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">Escalados</div>
+                        <div className="text-lg font-bold text-slate-400">0</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase">Situação</div>
+                        <div className="text-xs font-black text-slate-600 mt-1 uppercase">Descanso</div>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-slate-500 mb-2 font-medium">
+                      Equipe em folga regulamentar da escala 24h.
+                    </div>
+
+                    {/* Lista dos Policiais da Equipe (Em Folga) */}
+                    <div className="space-y-1.5 mt-3 pt-3 border-t border-slate-200 max-h-56 overflow-y-auto">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center justify-between">
+                        <span>Integrantes ({membrosEquipe.length})</span>
+                        <span className="text-[9px] text-slate-500 font-bold">EM FOLGA</span>
+                      </div>
+
+                      {membrosEquipe.length === 0 ? (
+                        <div className="text-xs text-slate-400 italic py-2 text-center">
+                          Nenhum policial cadastrado nesta equipe.
+                        </div>
+                      ) : (
+                        membrosEquipe.map(pol => (
+                          <div
+                            key={pol.id}
+                            className="flex items-center justify-between text-xs p-1.5 rounded-lg border bg-white border-slate-200 text-slate-700"
+                          >
+                            <div className="truncate min-w-0 pr-1">
+                              <div className="font-bold truncate text-slate-800">{pol.nomeCompleto}</div>
+                              <span className="text-[10px] text-slate-400 block font-mono">
+                                Mat: {pol.matricula} • {pol.regime || 'S/ Regime'}
+                              </span>
+                            </div>
+                            <span className="text-[9px] font-extrabold text-slate-600 bg-slate-100 border border-slate-300 px-2 py-0.5 rounded-md flex-shrink-0">
+                              FOLGA
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              // SE A EQUIPE ESTIVER DE PLANTÃO:
               return (
                 <div
                   key={plantao.equipeId}
@@ -529,7 +859,7 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                       ? 'border-red-400 bg-red-50/20'
                       : plantao.status === 'ALERTA'
                       ? 'border-amber-400 bg-amber-50/20'
-                      : 'border-slate-200'
+                      : 'border-emerald-300 bg-emerald-50/10'
                   }`}
                 >
                   {/* Cabeçalho da Equipe */}
@@ -582,9 +912,10 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                       </div>
                     </div>
                   </div>
+
                   {plantao.diretorPresenteDiurno && (
                     <div className="text-[10px] font-bold text-blue-900 bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-xl mb-2 flex items-center justify-between">
-                      <span className="flex items-center gap-1">🏢 Inclui Diretor no Diurno (Seg a Sex)</span>
+                      <span className="flex items-center gap-1">🏢 Apoio do Diretor (Expediente Comercial)</span>
                       <span className="font-mono text-blue-700">Noturno: {plantao.efetivoReal} pol.</span>
                     </div>
                   )}
@@ -592,8 +923,9 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                   <div className="text-[11px] text-slate-500 mb-2">
                     Meta mínima: <strong>{plantaoConfig.efetivoMinimo} policiais</strong>
                   </div>
+
                   {/* Botão de Remanejamento / Completar Efetivo se estiver com menos de 5 policiais */}
-                  {isDiretor && plantao.totalEscalados > 0 && (plantao.diretorPresenteDiurno ? plantao.efetivoDiurno : plantao.efetivoReal) < plantaoConfig.efetivoMinimo && (
+                  {isDiretor && (plantao.diretorPresenteDiurno ? plantao.efetivoDiurno : plantao.efetivoReal) < plantaoConfig.efetivoMinimo && (
                     <div className="mt-3">
                       <button
                         type="button"
@@ -606,7 +938,6 @@ export const ShiftDashboard: React.FC<ShiftDashboardProps> = ({
                       </button>
                     </div>
                   )}
-
 
                   {/* Lista de Policiais Escalados */}
                   <div className="space-y-1.5 mt-3 pt-3 border-t border-slate-100 max-h-56 overflow-y-auto">

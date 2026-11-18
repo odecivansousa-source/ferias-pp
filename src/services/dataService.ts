@@ -278,7 +278,7 @@ export async function getPerfis(): Promise<Perfil[]> {
       // SEGURANÇA: Seleciona estritamente campos funcionais públicos, excluindo qualquer senha
       const { data, error } = await supabase
         .from('perfis')
-        .select('id, auth_user_id, matricula, nome_completo, equipe_id, papel, situacao, email, telefone, regime, data_referencia_plantao')
+        .select('id, auth_user_id, matricula, nome_completo, equipe_id, papel, situacao, email, telefone, regime, data_referencia_plantao, data_nascimento')
         .order('nome_completo');
 
       if (!error && Array.isArray(data) && data.length > 0) {
@@ -297,6 +297,7 @@ export async function getPerfis(): Promise<Perfil[]> {
           senha: undefined, // Nunca exposto no cache público
           regime: d.regime || undefined,
           dataReferenciaPlantao: d.data_referencia_plantao || undefined,
+          dataNascimento: d.data_nascimento || undefined,
         };
       });
         localStorage.setItem(STORAGE_KEYS.PERFIS, JSON.stringify(perfisFormatados));
@@ -428,6 +429,7 @@ export async function savePerfil(perfil: Perfil): Promise<Perfil> {
       telefone: perfilNormalized.telefone || null,
       regime: perfilNormalized.regime || null,
       data_referencia_plantao: perfilNormalized.dataReferenciaPlantao || null,
+      data_nascimento: perfilNormalized.dataNascimento || null,
       updated_at: new Date().toISOString(),
     };
 

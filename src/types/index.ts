@@ -39,6 +39,7 @@ export interface Perfil {
   senha?: string; // Senha exclusiva da Direção da Unidade
   regime?: RegimePlantao;
   dataReferenciaPlantao?: string;
+  dataNascimento?: string; // Data de nascimento YYYY-MM-DD
 }
 
 export interface PeriodoFerias {

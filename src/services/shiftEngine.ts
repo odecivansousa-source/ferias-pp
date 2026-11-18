@@ -136,6 +136,20 @@ export function calcularPlantoesDia(
     e => e.id !== '00000000-0000-0000-0000-000000000000' && e.codigo !== 'ADM' && e.nome !== 'ADM'
   );
 
+  // Determina a equipe principal de plantão hoje (aquela com maior número de escalados operacionais)
+  // O Diretor cumpre expediente comercial e apoia o plantão diurno da unidade, vinculado à equipe principal
+  // Isso impede que o Diretor seja duplicado em múltiplas equipes ao mesmo tempo!
+  const equipesContagem = equipesOperacionais.map(equipe => {
+    const membros = policiaisAtivos.filter(p => p.equipeId === equipe.id);
+    const countEscalados = membros.filter(pol => isPolicialEscalado(pol.dataReferenciaPlantao, pol.regime, dataAlvo)).length;
+    return { equipeId: equipe.id, countEscalados };
+  });
+
+  const maxEscalados = Math.max(...equipesContagem.map(e => e.countEscalados), 0);
+  const equipePrincipalId = maxEscalados > 0 
+    ? equipesContagem.find(e => e.countEscalados === maxEscalados)?.equipeId 
+    : undefined;
+
   return equipesOperacionais.map(equipe => {
     const membrosEquipe = policiaisAtivos.filter(p => p.equipeId === equipe.id);
 
@@ -205,10 +219,10 @@ export function calcularPlantoesDia(
     const remanejadosCount = policiaisDetalhe.filter(p => p.isRemanejado).length;
     const efetivoReal = escalados.length - ausentes.length;
 
-    // Se esta equipe tem policiais de plantão hoje e for dia útil (Seg a Sex):
+    // Se esta equipe é a principal em serviço hoje e for dia útil (Seg a Sex):
     // O Diretor cumpre expediente na unidade no horário comercial e conta no efetivo diurno!
-    const equipeAtivaHoje = escalados.length > 0;
-    const incluiDiretor = equipeAtivaHoje && ehDiaUtil && !!diretor;
+    const ehEquipePrincipal = equipe.id === equipePrincipalId;
+    const incluiDiretor = ehEquipePrincipal && ehDiaUtil && !!diretor;
     const diretorSoma = incluiDiretor && diretorPresenteHoje ? 1 : 0;
     const efetivoDiurno = efetivoReal + diretorSoma;
 
@@ -227,16 +241,22 @@ export function calcularPlantoesDia(
       });
     }
 
-    // Avaliação do status: durante o dia em dias úteis, o sistema conta com o Diretor presente!
+    // Avaliação do status:
+    // Se não há nenhum policial escalado nesta equipe hoje -> FOLGA!
+    // Se há policiais escalados, avalia se o efetivo atende aos limites mínimo e crítico
     const efetivoParaStatus = ehDiaUtil ? efetivoDiurno : efetivoReal;
 
-    let status: 'OK' | 'ALERTA' | 'CRITICO' = 'OK';
+    let status: 'OK' | 'ALERTA' | 'CRITICO' | 'FOLGA' = 'FOLGA';
     if (escalados.length > 0) {
       if (efetivoParaStatus < efetivoAlerta) {
         status = 'CRITICO';
       } else if (efetivoParaStatus < efetivoMinimo) {
         status = 'ALERTA';
+      } else {
+        status = 'OK';
       }
+    } else {
+      status = 'FOLGA';
     }
 
     return {
